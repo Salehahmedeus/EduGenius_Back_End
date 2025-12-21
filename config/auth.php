@@ -40,6 +40,11 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+         'api' => [
+            'driver' => 'jwt',      // Uses tymon/jwt-auth
+            'provider' => 'users',  // Uses the provider defined below
+        ],
+        
     ],
 
     /*
@@ -62,7 +67,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\User::class),
+            'model' => App\Modules\Authentication\Models\User::class,
         ],
 
         // 'users' => [
