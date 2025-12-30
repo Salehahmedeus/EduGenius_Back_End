@@ -87,7 +87,7 @@ class AuthenticationService
     public function sendOTP(string $email)
     {
         $user = $this->userRepo->findByEmail($email);
-        
+
         if (!$user) {
             throw new \Exception("User not found");
         }
@@ -114,7 +114,7 @@ class AuthenticationService
 
         // Generate Token
         $token = auth('api')->login($user);
-        
+
         return $this->formatTokenResponse($token);
     }
 }

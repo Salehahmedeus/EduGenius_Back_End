@@ -34,10 +34,12 @@ class UserRepository
             // Clear OTP after success
             $user->otp_code = null;
             $user->otp_expires_at = null;
+            if ($user->email_verified_at === null) {
+                $user->email_verified_at = now();
+            }
             $user->save();
             return true;
         }
         return false;
     }
-    
 }
