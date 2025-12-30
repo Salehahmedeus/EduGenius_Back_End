@@ -8,6 +8,7 @@ use Illuminate\Validation\ValidationException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\OTPMail;
+use App\Jobs\SendOtpEmailJob;
 
 class AuthenticationService
 {
@@ -99,7 +100,7 @@ class AuthenticationService
         $this->userRepo->saveOTP($user, $otp);
 
         // 3. Send Email
-        Mail::to($user->email)->send(new OTPMail($otp));
+        SendOtpEmailJob::dispatch($user->email, $otp);
 
         return ['message' => 'OTP sent to email'];
     }
