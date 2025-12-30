@@ -20,4 +20,24 @@ class UserRepository
     {
         return User::where('email', $email)->first();
     }
+
+    public function saveOTP($user, $otp)
+    {
+        $user->otp_code = $otp;
+        $user->otp_expires_at = now()->addMinutes(10);
+        $user->save();
+    }
+
+    public function verifyOTP($user, $inputOtp)
+    {
+        if ($user->otp_code === $inputOtp && now()->lessThan($user->otp_expires_at)) {
+            // Clear OTP after success
+            $user->otp_code = null;
+            $user->otp_expires_at = null;
+            $user->save();
+            return true;
+        }
+        return false;
+    }
+    
 }

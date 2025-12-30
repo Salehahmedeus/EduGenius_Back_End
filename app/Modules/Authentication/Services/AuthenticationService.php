@@ -6,6 +6,8 @@ use App\Modules\Authentication\Repositories\UserRepository;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\OTPMail;
 
 class AuthenticationService
 {
@@ -80,5 +82,39 @@ class AuthenticationService
             'expires_in' => auth('api')->factory()->getTTL() * 60,
             'user' => auth('api')->user()
         ];
+    }
+
+    public function sendOTP(string $email)
+    {
+        $user = $this->userRepo->findByEmail($email);
+        
+        if (!$user) {
+            throw new \Exception("User not found");
+        }
+
+        // 1. Generate 6 digit code
+        $otp = rand(100000, 999999);
+
+        // 2. Save to DB
+        $this->userRepo->saveOTP($user, $otp);
+
+        // 3. Send Email
+        Mail::to($user->email)->send(new OTPMail($otp));
+
+        return ['message' => 'OTP sent to email'];
+    }
+
+    public function loginWithOTP(string $email, string $otp)
+    {
+        $user = $this->userRepo->findByEmail($email);
+
+        if (!$user || !$this->userRepo->verifyOTP($user, $otp)) {
+            return null; // Invalid OTP
+        }
+
+        // Generate Token
+        $token = auth('api')->login($user);
+        
+        return $this->formatTokenResponse($token);
     }
 }

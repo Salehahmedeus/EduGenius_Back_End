@@ -88,7 +88,7 @@
     }
   ],
   "variable": [
-    { "key": "baseUrl", "value": "http://127.0.0.1:8081" },
+    { "key": "baseUrl", "value": "http://edugenius.test" },
     { "key": "jwtToken", "value": "" }
   ]
 }

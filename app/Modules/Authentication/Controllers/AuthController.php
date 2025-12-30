@@ -54,4 +54,33 @@ class AuthController extends Controller
         $this->authService->logoutUser();
         return response()->json(['message' => 'Successfully logged out']);
     }
+
+    public function sendOtp(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+        
+        try {
+            $this->authService->sendOTP($request->email);
+            return response()->json(['message' => 'OTP sent successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 404);
+        }
+    }
+
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|digits:6'
+        ]);
+
+        $result = $this->authService->loginWithOTP($request->email, $request->otp);
+
+        if (!$result) {
+            return response()->json(['error' => 'Invalid or expired OTP'], 401);
+        }
+
+        return response()->json($result);
+    }
+
 }
