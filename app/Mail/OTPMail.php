@@ -3,10 +3,7 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 class OTPMail extends Mailable
@@ -22,7 +19,7 @@ class OTPMail extends Mailable
 
     public function build()
     {
-        return $this->subject('Your EduGenius Login Code')
-                    ->html("<h1>Your OTP Code is: {$this->otp}</h1><p>It expires in 10 minutes.</p>");
+        return $this->subject('🔐 Your EduGenius Verification Code') // Added a lock emoji for style
+            ->view('emails.otp'); //  pointing to the new blade file
     }
 }
