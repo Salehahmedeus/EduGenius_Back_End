@@ -3,18 +3,22 @@
 namespace App\Modules\Authentication\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Authentication\Models\User;
+use App\Modules\Authentication\Services\AuthenticationService; 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
-    /**
-     * Register a new user.
-     */
+    protected $authService;
+
+    public function __construct(AuthenticationService $authService)
+    {
+        $this->authService = $authService;
+    }
+
     public function register(Request $request)
     {
+        // 1. Validation (Presentation Layer)
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -25,56 +29,29 @@ class AuthController extends Controller
             return response()->json($validator->errors(), 400);
         }
 
-        // Create the user
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+        // 2. Call Service (Business Logic Layer)
+        $result = $this->authService->registerUser($request->only(['name', 'email', 'password']));
 
-        // Generate token
-        $token = auth('api')->login($user);
-
-        return $this->respondWithToken($token);
+        return response()->json($result, 201);
     }
 
-    /**
-     * Log the user in (Get the token).
-     */
     public function login(Request $request)
     {
-        $credentials = $request->only('email', 'password');
+        $result = $this->authService->authenticateUser(
+            $request->input('email'),
+            $request->input('password')
+        );
 
-
-
-        // Simple trick: verify manually or customize the provider.
-        // For simplicity, let's try the standard way first.
-        if (! $token = auth('api')->attempt(['email' => $request->email, 'password' => $request->password])) {
+        if (!$result) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        return $this->respondWithToken($token);
+        return response()->json($result);
     }
 
-    /**
-     * Log the user out (Invalidate the token).
-     */
     public function logout()
     {
-        auth('api')->logout();
-
+        $this->authService->logoutUser();
         return response()->json(['message' => 'Successfully logged out']);
-    }
-
-    /**
-     * Get the token array structure.
-     */
-    protected function respondWithToken($token)
-    {
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => auth('api')->factory()->getTTL() * 60
-        ]);
     }
 }
