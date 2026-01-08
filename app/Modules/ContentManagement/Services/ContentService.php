@@ -55,4 +55,36 @@ class ContentService
             throw $e;
         }
     }
+
+    public function deleteMaterial($materialId, $userId)
+    {
+        $material = $this->repo->findMaterial($materialId);
+
+        if (!$material) {
+            throw new \Exception("File not found");
+        }
+
+        // Security Check: Does this file belong to this user?
+        if ($material->user_id !== $userId) {
+            throw new \Exception("Unauthorized access to this file");
+        }
+
+        // 1. Delete Physical File from Disk
+        $this->storageService->delete($material->file_path);
+
+        // 2. Delete Database Record
+        $this->repo->deleteMaterial($materialId);
+
+        return true;
+    }
+
+    public function searchUserFiles($userId, $keyword)
+    {
+
+        if (empty($keyword) || strlen($keyword) < 2) {
+            return []; // Return empty if search term is too short
+        }
+
+        return $this->repo->searchMaterials($userId, $keyword);
+    }
 }

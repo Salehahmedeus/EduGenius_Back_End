@@ -38,4 +38,36 @@ class FileController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    public function delete($id)
+    {
+        try {
+            $this->contentService->deleteMaterial($id, auth('api')->id());
+
+            return response()->json([
+                'message' => 'File deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            // Check if it was an Authorization error or Missing File error
+            $status = ($e->getMessage() === "Unauthorized access to this file") ? 403 : 404;
+
+            return response()->json(['error' => $e->getMessage()], $status);
+        }
+    }
+
+    public function search(Request $request)
+    {
+        $query = $request->input('q');
+
+        if (!$query) {
+            return response()->json(['error' => 'Please provide a search query (q parameter)'], 400);
+        }
+
+        $results = $this->contentService->searchUserFiles(auth('api')->id(), $query);
+
+        return response()->json([
+            'count' => count($results),
+            'data' => $results
+        ]);
+    }
 }
