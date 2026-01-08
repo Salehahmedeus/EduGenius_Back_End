@@ -3,19 +3,33 @@
 namespace App\Modules\AILearning\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Core\Traits\ApiResponseTrait;
 use App\Modules\AILearning\Services\ResponseSynthesizer;
 use Illuminate\Http\Request;
 
 class AIServiceController extends Controller
 {
-    use ApiResponseTrait;
+    protected $aiService;
 
-    public function __construct(private ResponseSynthesizer $responseSynthesizer)
+    public function __construct(ResponseSynthesizer $aiService)
     {
+        $this->aiService = $aiService;
     }
 
-    public function query(Request $request)
+    public function ask(Request $request)
     {
+        $request->validate(['query' => 'required|string|min:2']);
+
+        $result = $this->aiService->generate(
+            auth('api')->id(),
+            $request->input('query')
+        );
+
+        return response()->json($result);
+    }
+
+    public function history()
+    {
+        $history = $this->aiService->getChatHistory(auth('api')->id());
+        return response()->json($history);
     }
 }
