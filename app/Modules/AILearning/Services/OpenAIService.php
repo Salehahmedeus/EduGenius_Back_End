@@ -3,20 +3,27 @@
 namespace App\Modules\AILearning\Services;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use App\Modules\AILearning\Models\AITutor;
 
 class OpenAIService
 {
-    /**
-     * Sends the prompt to the LLM (Gemini acting as OpenAI).
-     * Matches PDF Section 2.4.3 (External Service).
-     */
-    public function sendQuery(string $systemPrompt, string $userContext, string $question)
+    public function sendQueryWithHistory(string $fileContext, string $chatHistory, string $question)
     {
-        $apiKey = env('GEMINI_API_KEY');
-        // Using Gemini Pro 1.5 Latest
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={$apiKey}";
+        // ... (Get Tutor Config from DB logic) ...
+        $tutor = \App\Modules\AILearning\Models\AITutor::where('is_active', true)->first();
+        $model = $tutor ? $tutor->model_version : 'gemini-1.5-flash-latest';
+        $systemPrompt = $tutor ? $tutor->system_prompt : 'You are a helpful AI.';
 
-        $fullText = $systemPrompt . "\n\nCONTEXT:\n" . $userContext . "\n\nQUESTION: " . $question;
+        // ... (Prepare URL) ...
+        $apiKey = env('GEMINI_API_KEY');
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+
+        // 👇 Construct the FULL Prompt with History
+        $fullText = $systemPrompt . "\n\n" .
+            "RELEVANT FILE CONTENT:\n" . $fileContext . "\n\n" .
+            "PREVIOUS CONVERSATION:\n" . $chatHistory . "\n\n" . //  The History
+            "CURRENT QUESTION: " . $question;
 
         try {
             $response = Http::withHeaders(['Content-Type' => 'application/json'])
@@ -25,12 +32,12 @@ class OpenAIService
                 ]);
 
             if ($response->failed()) {
-                return null;
+                return "AI Error: " . $response->body();
             }
 
             return $response->json()['candidates'][0]['content']['parts'][0]['text'] ?? null;
         } catch (\Exception $e) {
-            \Log::error("AI Service Error: " . $e->getMessage());
+            Log::error("AI Service Error: " . $e->getMessage());
             return null;
         }
     }

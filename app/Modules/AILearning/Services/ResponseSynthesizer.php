@@ -26,32 +26,32 @@ class ResponseSynthesizer
 
     public function generate($userId, $query)
     {
-        // 1. NLP Processor: Extract Keywords
-        // (Sequence Diagram Step: "Tokenize and analyze query")
+        // 1. NLP & Keyword Extraction (Existing logic)
         $keywords = $this->nlpProcessor->extractKeywords($query);
 
-        // 2. Knowledge Repo: Search Context
-        // (Sequence Diagram Step: "Search internal knowledge base")
+        // 2. Search Local Files (Existing logic)
         $localResults = $this->knowledgeRepo->searchByKeywords($userId, $keywords);
 
-        $contextText = "";
+        $fileContext = "";
         $sourceIds = [];
         foreach ($localResults as $result) {
-            $contextText .= substr($result->content_text, 0, 800) . "\n\n";
+            $fileContext .= substr($result->content_text, 0, 800) . "\n\n";
             $sourceIds[] = $result->material_id;
         }
 
-        // 3. OpenAI Service: Get Answer
-        // (Sequence Diagram Step: "Process with GPT model")
-        $systemPrompt = "You are EduGenius. Answer based on the context provided.";
+        // 3. NEW: Get Conversation History (The fix)
+        // This makes the AI "remember" previous questions
+        $chatHistory = $this->historyRepo->getConversationContext($userId);
 
-        $aiText = $this->aiService->sendQuery($systemPrompt, $contextText, $query);
+        // 4. Send to AI Service
+        // We pass the Chat History into the prompt now
+        $aiText = $this->aiService->sendQueryWithHistory(
+            $fileContext,
+            $chatHistory, // 👈 Passing history
+            $query
+        );
 
-        if (!$aiText) {
-            $aiText = "I'm having trouble connecting to the AI service.";
-        }
-
-        // 4. Log Interaction
+        // 5. Log Interaction
         $this->knowledgeRepo->logInteraction($userId, $query, $aiText, $sourceIds);
 
         return [
@@ -63,5 +63,27 @@ class ResponseSynthesizer
     public function getChatHistory($userId)
     {
         return $this->historyRepo->getUserChatHistory($userId);
+    }
+
+    public function generateFromSpecificText($userId, $query, $textFromPdf)
+    {
+        // 1. Get History (Context)
+        $chatHistory = $this->historyRepo->getConversationContext($userId);
+
+        // 2. Send to AI
+        // We pass the PDF text directly as context
+        $aiText = $this->aiService->sendQueryWithHistory(
+            $textFromPdf,  //  Using the file text directly
+            $chatHistory,
+            $query
+        );
+
+        // 3. Log Interaction
+        $this->knowledgeRepo->logInteraction($userId, $query, $aiText, ['direct_file_upload']);
+
+        return [
+            'response' => $aiText,
+            'source' => 'Direct File Upload'
+        ];
     }
 }
