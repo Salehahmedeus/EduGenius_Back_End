@@ -3,69 +3,65 @@
 namespace App\Modules\AILearning\Services;
 
 use App\Modules\AILearning\Repositories\KnowledgeRepository;
-use OpenAI\Laravel\Facades\OpenAI;
+use App\Modules\AILearning\Repositories\HistoryRepository;
 
 class ResponseSynthesizer
 {
-    protected $repo;
+    protected $knowledgeRepo;
+    protected $historyRepo;
+    protected $nlpProcessor;
+    protected $aiService;
 
-    public function __construct(KnowledgeRepository $repo)
-    {
-        $this->repo = $repo;
+    public function __construct(
+        KnowledgeRepository $knowledgeRepo,
+        HistoryRepository $historyRepo,
+        NLPProcessor $nlpProcessor,  // Inject NLP
+        OpenAIService $aiService     // Inject AI
+    ) {
+        $this->knowledgeRepo = $knowledgeRepo;
+        $this->historyRepo = $historyRepo;
+        $this->nlpProcessor = $nlpProcessor;
+        $this->aiService = $aiService;
     }
 
     public function generate($userId, $query)
     {
-        // 1. Search Local Context (Student's Notes)
-        $localResults = $this->repo->searchLocalContext($userId, $query);
+        // 1. NLP Processor: Extract Keywords
+        // (Sequence Diagram Step: "Tokenize and analyze query")
+        $keywords = $this->nlpProcessor->extractKeywords($query);
+
+        // 2. Knowledge Repo: Search Context
+        // (Sequence Diagram Step: "Search internal knowledge base")
+        $localResults = $this->knowledgeRepo->searchByKeywords($userId, $keywords);
 
         $contextText = "";
         $sourceIds = [];
-
         foreach ($localResults as $result) {
-            // Grab a chunk of text around the match (simulated here by taking first 500 chars)
-            $contextText .= "--- Source (File ID: {$result->material_id}) ---\n" .
-                substr($result->content_text, 0, 800) . "\n\n";
+            $contextText .= substr($result->content_text, 0, 800) . "\n\n";
             $sourceIds[] = $result->material_id;
         }
 
-        // 2. Build the System Prompt
-        $systemMessage = "You are EduGenius, an AI Tutor. " .
-            "Answer the student's question accurately. " .
-            "If the provided CONTEXT contains the answer, use it and mention that it comes from their notes. " .
-            "If the context is empty or irrelevant, use your own general knowledge.";
+        // 3. OpenAI Service: Get Answer
+        // (Sequence Diagram Step: "Process with GPT model")
+        $systemPrompt = "You are EduGenius. Answer based on the context provided.";
 
-        // 3. Call OpenAI
-        try {
-            $response = OpenAI::chat()->create([
-                'model' => 'gpt-3.5-turbo', // or 'gpt-4'
-                'messages' => [
-                    ['role' => 'system', 'content' => $systemMessage],
-                    ['role' => 'user', 'content' => "CONTEXT:\n{$contextText}\n\nQUESTION: {$query}"],
-                ],
-                'max_tokens' => 500,
-            ]);
+        $aiText = $this->aiService->sendQuery($systemPrompt, $contextText, $query);
 
-            $aiText = $response->choices[0]->message->content;
-
-            // 4. Log to DB
-            $this->repo->logInteraction($userId, $query, $aiText, $sourceIds);
-
-            return [
-                'response' => $aiText,
-                'sources' => $sourceIds,
-                'used_local_context' => !empty($contextText)
-            ];
-        } catch (\Exception $e) {
-            return [
-                'response' => "I am currently unavailable. Please check your internet connection or API key.",
-                'error' => $e->getMessage()
-            ];
+        if (!$aiText) {
+            $aiText = "I'm having trouble connecting to the AI service.";
         }
+
+        // 4. Log Interaction
+        $this->knowledgeRepo->logInteraction($userId, $query, $aiText, $sourceIds);
+
+        return [
+            'response' => $aiText,
+            'sources' => $sourceIds
+        ];
     }
 
     public function getChatHistory($userId)
     {
-        return $this->repo->getHistory($userId);
+        return $this->historyRepo->getUserChatHistory($userId);
     }
 }
