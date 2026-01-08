@@ -1,15 +1,35 @@
 <?php
 
-namespace App\Modules\AILearning\Models;
+namespace App\Modules\AILearning\Controllers;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\Controller;
+use App\Modules\AILearning\Services\ResponseSynthesizer;
+use Illuminate\Http\Request;
 
-class ConversationContext extends Model
+class AIController extends Controller
 {
-    protected $fillable = ['user_id', 'context_name'];
+    protected $aiService;
 
-    public function messages()
+    public function __construct(ResponseSynthesizer $aiService)
     {
-        return $this->hasMany(AIResponse::class, 'conversation_id');
+        $this->aiService = $aiService;
+    }
+
+    public function ask(Request $request)
+    {
+        $request->validate(['query' => 'required|string|min:2']);
+
+        $result = $this->aiService->generate(
+            auth('api')->id(),
+            $request->input('query')
+        );
+
+        return response()->json($result);
+    }
+
+    public function history()
+    {
+        $history = $this->aiService->getChatHistory(auth('api')->id());
+        return response()->json($history);
     }
 }
