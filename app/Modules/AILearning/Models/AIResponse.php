@@ -6,4 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class AIResponse extends Model
 {
+    protected $fillable = [
+        'user_id',
+        'conversation_id',
+        'user_query',
+        'ai_response',
+        'confidence_score',
+        'sources'
+    ];
+
+    protected $casts = [
+        'sources' => 'array',
+    ];
 }
