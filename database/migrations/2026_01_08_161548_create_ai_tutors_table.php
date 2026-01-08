@@ -6,20 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('ai_tutors', function (Blueprint $table) {
             $table->id();
+            $table->string('name'); // e.g., "EduGenius"
+            $table->string('model_version'); // e.g., "gemini-1.5-flash"
+            $table->text('system_prompt'); // e.g., "You are a helpful tutor..."
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('ai_tutors');
