@@ -70,4 +70,10 @@ class FileController extends Controller
             'data' => $results
         ]);
     }
+
+    public function list()
+    {
+        $files = $this->contentService->listUserFiles(auth('api')->id());
+        return response()->json($files);
+    }
 }

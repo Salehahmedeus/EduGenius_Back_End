@@ -87,4 +87,11 @@ class ContentService
 
         return $this->repo->searchMaterials($userId, $keyword);
     }
+    /**
+     * Get all files for a specific user.
+     */
+    public function listUserFiles($userId)
+    {
+        return $this->repo->getUserFiles($userId);
+    }
 }
