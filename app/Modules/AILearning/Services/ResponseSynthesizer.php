@@ -47,7 +47,7 @@ class ResponseSynthesizer
         // We pass the Chat History into the prompt now
         $aiText = $this->aiService->sendQueryWithHistory(
             $fileContext,
-            $chatHistory, // 👈 Passing history
+            $chatHistory, //  Passing history
             $query
         );
 

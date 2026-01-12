@@ -2,10 +2,7 @@
 
 namespace App\Modules\AILearning\Repositories;
 
-// 👇 1. Import the Content Model (Data Source)
 use App\Modules\ContentManagement\Models\KnowledgeBase;
-
-// 👇 2. Import the AI Log Models (Data Sink)
 use App\Modules\AILearning\Models\ConversationContext;
 use App\Modules\AILearning\Models\AIResponse;
 
