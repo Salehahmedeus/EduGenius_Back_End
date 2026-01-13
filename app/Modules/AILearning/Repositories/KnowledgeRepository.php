@@ -5,6 +5,7 @@ namespace App\Modules\AILearning\Repositories;
 use App\Modules\ContentManagement\Models\KnowledgeBase;
 use App\Modules\AILearning\Models\ConversationContext;
 use App\Modules\AILearning\Models\AIResponse;
+use Illuminate\Support\Str;
 
 class KnowledgeRepository
 {
@@ -39,30 +40,49 @@ class KnowledgeRepository
     }
 
     /**
-     * Log the conversation details to the database.
-     * 
-     * @param int $userId
-     * @param string $query - The user's original question
-     * @param string $response - The AI's answer
-     * @param array $sources - IDs of the files used for context
+     * Log the conversation.
+     * Handles Creating NEW chats or CONTINUING existing ones.
      */
-    public function logInteraction($userId, $query, $response, $sources)
+    public function logInteraction($userId, $query, $response, $sources, $conversationId = null)
     {
-        // 1. Get or Create a default conversation context
-        // (In the future, you can pass a conversation_id from the frontend to support threads)
-        $context = ConversationContext::firstOrCreate(
-            ['user_id' => $userId],
-            ['context_name' => 'General Chat']
-        );
+        $context = null;
 
-        // 2. Save the interaction record
-        return AIResponse::create([
+        if ($conversationId) {
+            // Continue existing chat
+            $context = ConversationContext::where('id', $conversationId)
+                ->where('user_id', $userId)
+                ->first();
+        }
+
+        // If no ID provided OR ID not found -> Create NEW Chat
+        if (!$context) {
+            $context = ConversationContext::create([
+                'user_id' => $userId,
+                'context_name' => substr($query, 0, 30) . '...', // Use first 30 chars as title
+                'conversation_id' => Str::uuid(), // Generates unique string
+            ]);
+        }
+
+        // Save the message linked to this specific context
+        AIResponse::create([
             'user_id' => $userId,
             'conversation_id' => $context->id,
             'user_query' => $query,
             'ai_response' => $response,
-            'confidence_score' => 0.85, // Placeholder (Gemini doesn't give a score easily)
-            'sources' => $sources // Casts to JSON automatically via Model
+            'confidence_score' => 0.85,
+            'sources' => $sources
         ]);
+
+        return $context; // Return the context so frontend knows the ID
+    }
+
+    /**
+     * Get list of all chat sessions for the sidebar.
+     */
+    public function getUserConversations($userId)
+    {
+        return ConversationContext::where('user_id', $userId)
+            ->orderBy('updated_at', 'desc')
+            ->get(['id', 'context_name', 'created_at']);
     }
 }

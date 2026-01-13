@@ -10,16 +10,18 @@ class HistoryRepository
      * Retrieve the last N messages to build conversation context.
      * (Used by the AI to "remember" context)
      */
-    public function getConversationContext($userId, $limit = 5)
+    public function getConversationContext($userId, $conversationId = null, $limit = 5)
     {
+        if (!$conversationId) return ""; // New chat = No history
+
         $history = AIResponse::where('user_id', $userId)
+            ->where('conversation_id', $conversationId) // Filter by specific chat
             ->orderBy('created_at', 'desc')
             ->take($limit)
             ->get()
             ->reverse();
 
         $contextString = "";
-
         foreach ($history as $interaction) {
             $contextString .= "Student: " . $interaction->user_query . "\n";
             $contextString .= "AI Tutor: " . $interaction->ai_response . "\n";
@@ -30,7 +32,7 @@ class HistoryRepository
 
     /**
      * Get raw history list for the Mobile UI.
-     * 👇 RENAMED THIS METHOD to match the Service call.
+     * RENAMED THIS METHOD to match the Service call.
      */
     public function getUserChatHistory($userId)
     {

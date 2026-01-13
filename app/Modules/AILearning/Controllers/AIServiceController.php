@@ -7,6 +7,7 @@ use App\Modules\AILearning\Services\ResponseSynthesizer;
 use Illuminate\Http\Request;
 use App\Modules\ContentManagement\Services\FileProcessor;
 use App\Modules\ContentManagement\Services\FileStorageService;
+use App\Modules\AILearning\Models\ConversationContext;
 
 class AIServiceController extends Controller
 {
@@ -26,14 +27,23 @@ class AIServiceController extends Controller
 
     public function ask(Request $request)
     {
-        $request->validate(['query' => 'required|string|min:2']);
+        $$request->validate([
+            'query' => 'required|string|min:2',
+            'conversation_id' => 'nullable|integer|exists:conversation_contexts,id'
+        ]);
 
         $result = $this->aiService->generate(
             auth('api')->id(),
-            $request->input('query')
+            $request->input('query'),
+            $request->input('conversation_id') // Can be null (New Chat) or ID (Continue)
         );
 
         return response()->json($result);
+    }
+
+    public function listChats()
+    {
+        return response()->json(ConversationContext::where('user_id', auth('api')->id())->latest()->get());
     }
 
     public function history()

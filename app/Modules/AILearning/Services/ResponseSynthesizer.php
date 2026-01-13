@@ -24,7 +24,7 @@ class ResponseSynthesizer
         $this->aiService = $aiService;
     }
 
-    public function generate($userId, $query)
+    public function generate($userId, $query, $conversationId = null)
     {
         // 1. NLP & Keyword Extraction (Existing logic)
         $keywords = $this->nlpProcessor->extractKeywords($query);
@@ -39,22 +39,18 @@ class ResponseSynthesizer
             $sourceIds[] = $result->material_id;
         }
 
-        // 3. NEW: Get Conversation History (The fix)
-        // This makes the AI "remember" previous questions
-        $chatHistory = $this->historyRepo->getConversationContext($userId);
+        // 3. Get History for THIS specific conversation
+        $chatHistory = $this->historyRepo->getConversationContext($userId, $conversationId);
 
-        // 4. Send to AI Service
-        // We pass the Chat History into the prompt now
-        $aiText = $this->aiService->sendQueryWithHistory(
-            $fileContext,
-            $chatHistory, //  Passing history
-            $query
-        );
+        // 4. Send to AI (Same)
+        $aiText = $this->aiService->sendQueryWithHistory($fileContext, $chatHistory, $query);
 
-        // 5. Log Interaction
-        $this->knowledgeRepo->logInteraction($userId, $query, $aiText, $sourceIds);
+        // 5. Log Interaction (Pass the ID)
+        $context = $this->knowledgeRepo->logInteraction($userId, $query, $aiText, $sourceIds, $conversationId);
 
         return [
+            'conversation_id' => $context->id, // Return ID so frontend can continue this chat
+            'context_name' => $context->context_name,
             'response' => $aiText,
             'sources' => $sourceIds
         ];
