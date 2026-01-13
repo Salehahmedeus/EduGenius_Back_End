@@ -31,13 +31,14 @@ class HistoryRepository
     }
 
     /**
-     * Get raw history list for the Mobile UI.
-     * RENAMED THIS METHOD to match the Service call.
+     * Get all messages for a specific chat room.
+     * Used by the Mobile App when opening a chat.
      */
-    public function getUserChatHistory($userId)
+    public function getMessagesByConversation($userId, $conversationId)
     {
         return AIResponse::where('user_id', $userId)
-            ->orderBy('created_at', 'desc')
+            ->where('conversation_id', $conversationId)
+            ->orderBy('created_at', 'asc') // Oldest first (like WhatsApp)
             ->get();
     }
 }

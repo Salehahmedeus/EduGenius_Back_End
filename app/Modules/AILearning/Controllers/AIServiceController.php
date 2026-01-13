@@ -27,18 +27,47 @@ class AIServiceController extends Controller
 
     public function ask(Request $request)
     {
+        // 1. Unified Validation
+        // 'file' is now nullable (Optional)
         $request->validate([
             'query' => 'required|string|min:2',
-            'conversation_id' => 'nullable|integer|exists:conversation_contexts,id'
+            'conversation_id' => 'nullable|integer|exists:conversation_contexts,id',
+            'file'  => 'nullable|file|mimes:pdf,docx,txt|max:10240'
         ]);
 
-        $result = $this->aiService->generate(
-            auth('api')->id(),
-            $request->input('query'),
-            $request->input('conversation_id') // Can be null (New Chat) or ID (Continue)
-        );
+        $userId = auth('api')->id();
+        $query = $request->input('query');
+        $convId = $request->input('conversation_id');
 
-        return response()->json($result);
+        try {
+            // 2. Check: Did the user upload a file?
+            if ($request->hasFile('file')) {
+                // === PATH A: Chat with uploaded file ===
+
+                $file = $request->file('file');
+                $path = $this->storageService->store($file, $userId);
+                $fullPath = $this->storageService->getAbsolutePath($path);
+
+                // Extract text
+                $text = $this->fileProcessor->extractText($fullPath, $file->getMimeType());
+
+                // Generate response
+                $result = $this->aiService->generateFromSpecificText($userId, $query, $text, $convId);
+
+                // Cleanup temp file
+                $this->storageService->delete($path);
+
+                return response()->json($result);
+            } else {
+                // === PATH B: Normal Chat (Database Search) ===
+
+                $result = $this->aiService->generate($userId, $query, $convId);
+
+                return response()->json($result);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function listChats()
@@ -46,45 +75,9 @@ class AIServiceController extends Controller
         return response()->json(ConversationContext::where('user_id', auth('api')->id())->latest()->get());
     }
 
-    public function history()
+    public function history($id)
     {
-        $history = $this->aiService->getChatHistory(auth('api')->id());
-        return response()->json($history);
-    }
-    public function askWithFile(Request $request)
-    {
-        $request->validate([
-            'query' => 'required|string',
-            'file'  => 'required|file|mimes:pdf,docx,txt|max:10240'
-        ]);
-
-        try {
-            $user = auth('api')->user();
-            $file = $request->file('file');
-
-            // 1. Temporarily store file to extract text
-            // (We store it so pdfparser can read it from disk)
-            $path = $this->storageService->store($file, $user->id);
-            $fullPath = $this->storageService->getAbsolutePath($path);
-
-            // 2. Extract Text
-            $text = $this->fileProcessor->extractText($fullPath, $file->getMimeType());
-
-            // 3. Ask AI using THAT text
-            $result = $this->aiService->generateFromSpecificText(
-                $user->id,
-                $request->input('query'),
-                $text
-            );
-
-            // 4. Cleanup (Optional: Delete file if you don't want to save it)
-            // If you WANT to save it to their library, call the ContentService here.
-            // For now, let's assume it's temporary:
-            $this->storageService->delete($path);
-
-            return response()->json($result);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
+        $messages = $this->aiService->getChatMessages(auth('api')->id(), $id);
+        return response()->json($messages);
     }
 }

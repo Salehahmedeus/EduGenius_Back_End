@@ -56,15 +56,15 @@ class ResponseSynthesizer
         ];
     }
 
-    public function getChatHistory($userId)
+    public function getChatMessages($userId, $conversationId)
     {
-        return $this->historyRepo->getUserChatHistory($userId);
+        return $this->historyRepo->getMessagesByConversation($userId, $conversationId);
     }
 
-    public function generateFromSpecificText($userId, $query, $textFromPdf)
+    public function generateFromSpecificText($userId, $query, $textFromPdf, $conversationId = null)
     {
         // 1. Get History (Context)
-        $chatHistory = $this->historyRepo->getConversationContext($userId);
+        $chatHistory = $this->historyRepo->getConversationContext($userId, $conversationId);
 
         // 2. Send to AI
         // We pass the PDF text directly as context
@@ -74,10 +74,12 @@ class ResponseSynthesizer
             $query
         );
 
-        // 3. Log Interaction
-        $this->knowledgeRepo->logInteraction($userId, $query, $aiText, ['direct_file_upload']);
+        // 3. Log Interaction (Passing the conversationId to keep the thread alive)
+        // We use a special source tag 'direct_file' so we know it came from a temp file
+        $context = $this->knowledgeRepo->logInteraction($userId, $query, $aiText, ['direct_file_upload'], $conversationId);
 
         return [
+            'conversation_id' => $context->id, // Return ID so they can reply
             'response' => $aiText,
             'source' => 'Direct File Upload'
         ];
