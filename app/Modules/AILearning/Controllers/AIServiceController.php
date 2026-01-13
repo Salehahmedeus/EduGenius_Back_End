@@ -27,7 +27,7 @@ class AIServiceController extends Controller
 
     public function ask(Request $request)
     {
-        $$request->validate([
+        $request->validate([
             'query' => 'required|string|min:2',
             'conversation_id' => 'nullable|integer|exists:conversation_contexts,id'
         ]);
