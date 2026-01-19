@@ -9,6 +9,8 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\OTPMail;
 use App\Jobs\SendOtpEmailJob;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Auth\Events\PasswordReset;
 
 class AuthenticationService
 {
@@ -117,5 +119,43 @@ class AuthenticationService
         $token = auth('api')->login($user);
 
         return $this->formatTokenResponse($token);
+    }
+
+    /**
+     * Send Reset Link
+     */
+    public function sendResetLink($email)
+    {
+        // Laravel's built-in broker handles the token generation & email
+        $status = Password::broker()->sendResetLink(['email' => $email]);
+
+        return $status === Password::RESET_LINK_SENT
+            ? ['status' => true, 'message' => __($status)]
+            : ['status' => false, 'message' => __($status)];
+    }
+
+    /**
+     * Reset the Password
+     */
+    public function resetPassword($email, $password, $passwordConfirmation, $token)
+    {
+        $status = Password::broker()->reset(
+            [
+                'email' => $email,
+                'password' => $password,
+                'password_confirmation' => $passwordConfirmation,
+                'token' => $token
+            ],
+            function ($user, $password) {
+                // Determine which column to update based on your schema
+                $user->password_hash = \Hash::make($password);
+                $user->save();
+                event(new PasswordReset($user));
+            }
+        );
+
+        return $status === Password::PASSWORD_RESET
+            ? ['status' => true, 'message' => __($status)]
+            : ['status' => false, 'message' => __($status)];
     }
 }
