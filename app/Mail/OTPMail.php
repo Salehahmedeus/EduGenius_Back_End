@@ -19,7 +19,7 @@ class OTPMail extends Mailable
 
     public function build()
     {
-        return $this->subject('🔐 Your EduGenius Verification Code') // Added a lock emoji for style
+        return $this->subject('🔐 EduGenius Verification Code') // Added a lock emoji for style
             ->view('emails.otp'); //  pointing to the new blade file
     }
 }

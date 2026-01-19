@@ -96,7 +96,8 @@ class AuthController extends Controller
             return response()->json($validator->errors(), 400);
         }
 
-        $result = $this->authService->sendResetLink($request->email);
+        // Call the new OTP method
+        $result = $this->authService->sendPasswordResetOtp($request->email);
 
         if ($result['status']) {
             return response()->json(['message' => $result['message']]);
@@ -111,20 +112,20 @@ class AuthController extends Controller
     public function resetPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'token' => 'required',
             'email' => 'required|email',
-            'password' => 'required|min:6|confirmed', // expects 'password_confirmation' field
+            'otp'   => 'required|digits:6', //  Changed from 'token' to 'otp'
+            'password' => 'required|min:6|confirmed', // expects 'password_confirmation'
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 400);
         }
 
-        $result = $this->authService->resetPassword(
+        // Call the new OTP method
+        $result = $this->authService->resetPasswordWithOtp(
             $request->email,
-            $request->password,
-            $request->password_confirmation,
-            $request->token
+            $request->otp,
+            $request->password
         );
 
         if ($result['status']) {
