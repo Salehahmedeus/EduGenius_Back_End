@@ -64,7 +64,7 @@ class PerformanceAnalyzer
             'score' => $score,
             'correct_answers' => $correctCount,
             'total_questions' => $total,
-            'feedback' => $this->generateFeedback($score),
+            'feedback' => $this->generateFeedback($score, $quiz->difficulty),
             'details' => $details
         ];
     }
@@ -72,10 +72,23 @@ class PerformanceAnalyzer
     /**
      * Simple feedback logic based on score.
      */
-    private function generateFeedback($score)
+    private function generateFeedback($score, $currentDifficulty)
     {
-        if ($score >= 90) return "Excellent! You have mastered this topic.";
-        if ($score >= 70) return "Good job! A little more revision will help.";
-        return "You might need to review your notes on this topic.";
+        // Adaptive Recommendation Logic
+        if ($score >= 80) {
+            if ($currentDifficulty < 3) {
+                return "Excellent! You are ready to try the next difficulty level.";
+            } else {
+                return "Masterful! You have conquered this topic.";
+            }
+        }
+
+        if ($score < 50) {
+            if ($currentDifficulty > 1) {
+                return "Don't worry. Try switching to an easier difficulty to build confidence.";
+            }
+        }
+
+        return "Good practice. Review the materials and try again.";
     }
 }
