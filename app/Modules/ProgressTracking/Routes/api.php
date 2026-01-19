@@ -9,4 +9,7 @@ Route::middleware('auth:api')->group(function () {
 
     // 2. Detailed Analytics Data
     Route::get('dashboard/stats', [AnalyticsController::class, 'stats']);
+
+    // 3. Generate Progress Report
+    Route::post('dashboard/report', [AnalyticsController::class, 'generateReport']);
 });
