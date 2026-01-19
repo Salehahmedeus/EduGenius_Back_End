@@ -3,19 +3,40 @@
 namespace App\Modules\ProgressTracking\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Core\Traits\ApiResponseTrait;
 use App\Modules\ProgressTracking\Services\VisualizationService;
+use App\Modules\ProgressTracking\Services\DashboardService; // (The one we made for Home Screen)
 use Illuminate\Http\Request;
 
 class AnalyticsController extends Controller
 {
-    use ApiResponseTrait;
+    protected $vizService;
+    protected $homeService;
 
-    public function __construct(private VisualizationService $visualizationService)
-    {
+    public function __construct(
+        VisualizationService $vizService,
+        DashboardService $homeService
+    ) {
+        $this->vizService = $vizService;
+        $this->homeService = $homeService;
     }
 
-    public function index(Request $request)
+    /**
+     * Endpoint: GET /api/dashboard/home
+     * Use: For the Main Home Screen (Quick summary)
+     */
+    public function home()
     {
+        $data = $this->homeService->getHomeData(auth('api')->user());
+        return response()->json($data);
+    }
+
+    /**
+     * Endpoint: GET /api/dashboard/stats
+     * Use: For the "Statistics" Tab (Detailed charts)
+     */
+    public function stats()
+    {
+        $data = $this->vizService->getFullDashboard(auth('api')->id());
+        return response()->json($data);
     }
 }
