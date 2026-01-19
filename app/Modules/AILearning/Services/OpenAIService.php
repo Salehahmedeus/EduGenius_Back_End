@@ -44,9 +44,11 @@ class OpenAIService
 
     public function generateRawContent(string $prompt)
     {
+        $tutor = AITutor::where('is_active', true)->first();
+        $model = $tutor ? $tutor->model_version : 'gemini-1.5-flash-latest';
         $apiKey = env('GEMINI_API_KEY');
         // We use the same model, but we might want to ensure it's the latest
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={$apiKey}";
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
         try {
             $response = Http::withHeaders(['Content-Type' => 'application/json'])
@@ -55,7 +57,7 @@ class OpenAIService
                 ]);
 
             if ($response->failed()) {
-                \Log::error("Gemini JSON Generation Failed: " . $response->body());
+                Log::error("Gemini JSON Generation Failed: " . $response->body());
                 throw new \Exception("AI Service Error");
             }
 

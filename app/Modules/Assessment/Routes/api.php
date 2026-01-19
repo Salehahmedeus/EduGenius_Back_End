@@ -3,5 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Modules\Assessment\Controllers\QuizController;
 
-Route::post('/quiz/start', [QuizController::class, 'start']);
-Route::post('/quiz/submit', [QuizController::class, 'submit']);
+Route::middleware('auth:api')->group(function () {
+    // 1. Generate a new Quiz (AI)
+    Route::post('quiz/generate', [QuizController::class, 'generate']);
+
+    // 2. Submit Answers & Get Score
+    Route::post('quiz/submit', [QuizController::class, 'submit']);
+});

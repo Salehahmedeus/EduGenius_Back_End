@@ -23,28 +23,51 @@ class QuizGenerator
         $this->aiService = $aiService;
     }
 
-    public function generateQuiz($userId, $topic, $difficulty = 1)
+    public function generateQuiz($userId, array $materialIds, $difficulty = 1)
     {
-        // 1. Get Context (Same as before)
-        $keywords = explode(' ', $topic);
-        $localResults = $this->knowledgeRepo->searchByKeywords($userId, $keywords);
+        // 1. Get All Selected Materials
+        $materials = \App\Modules\ContentManagement\Models\UploadedMaterial::with('knowledgeBase')
+            ->whereIn('id', $materialIds)
+            ->where('user_id', $userId) // Security Check
+            ->get();
 
-        if ($localResults->isEmpty()) {
-            throw new \Exception("No material found for this topic. Please upload a file first.");
+        if ($materials->isEmpty()) {
+            throw new \Exception("No valid materials found.");
         }
 
-        $contextText = "";
-        foreach ($localResults as $result) {
-            $contextText .= substr($result->content_text, 0, 1000) . "\n";
+        // 2. Combine Context & Create Topic Name
+        $fullContext = "";
+        $topicNames = [];
+
+        foreach ($materials as $file) {
+            if ($file->knowledgeBase) {
+                // Add header so AI knows which file this text comes from
+                $fullContext .= "\n--- SOURCE: {$file->file_name} ---\n";
+                // Take first 10,000 chars per file to stay within safe limits
+                $fullContext .= substr($file->knowledgeBase->content_text, 0, 10000) . "\n";
+
+                $topicNames[] = $file->file_name;
+            }
         }
 
-        // 2. Create Quiz Session
-        $quiz = $this->quizRepo->createQuiz($userId, $topic, $difficulty);
+        if (empty($fullContext)) {
+            throw new \Exception("The selected files have no readable text.");
+        }
 
-        // 3. Ask AI (Now using the Service!)
-        $questions = $this->fetchQuestionsFromAI($contextText, $difficulty);
+        // Create a readable topic string (e.g. "File A, File B...")
+        // Limit length to avoid DB errors
+        $topicString = implode(', ', $topicNames);
+        if (strlen($topicString) > 250) {
+            $topicString = substr($topicString, 0, 247) . '...';
+        }
 
-        // 4. Save
+        // 3. Create Quiz Session
+        $quiz = $this->quizRepo->createQuiz($userId, $topicString, $difficulty);
+
+        // 4. Ask AI (Send the combined context)
+        $questions = $this->fetchQuestionsFromAI($fullContext, $difficulty);
+
+        // 5. Save Questions
         $this->quizRepo->addQuestions($quiz->id, $questions);
 
         return $this->quizRepo->getQuiz($quiz->id);
