@@ -61,4 +61,15 @@ class AnalyticsRepository
             'total_study_sessions' => LearningHistory::where('user_id', $userId)->count(),
         ];
     }
+
+    /**
+     * Get the 5 most recent actions for the Home Screen list.
+     */
+    public function getRecentActivity($userId)
+    {
+        return LearningHistory::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+    }
 }
