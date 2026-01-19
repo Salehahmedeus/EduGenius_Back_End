@@ -41,4 +41,28 @@ class OpenAIService
             return null;
         }
     }
+
+    public function generateRawContent(string $prompt)
+    {
+        $apiKey = env('GEMINI_API_KEY');
+        // We use the same model, but we might want to ensure it's the latest
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={$apiKey}";
+
+        try {
+            $response = Http::withHeaders(['Content-Type' => 'application/json'])
+                ->post($url, [
+                    'contents' => [['parts' => [['text' => $prompt]]]]
+                ]);
+
+            if ($response->failed()) {
+                \Log::error("Gemini JSON Generation Failed: " . $response->body());
+                throw new \Exception("AI Service Error");
+            }
+
+            $data = $response->json();
+            return $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+        } catch (\Exception $e) {
+            throw $e;
+        }
+    }
 }
