@@ -3,7 +3,7 @@
 namespace App\Modules\Authentication\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Authentication\Services\AuthenticationService; 
+use App\Modules\Authentication\Services\AuthenticationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -58,7 +58,7 @@ class AuthController extends Controller
     public function sendOtp(Request $request)
     {
         $request->validate(['email' => 'required|email']);
-        
+
         try {
             $this->authService->sendOTP($request->email);
             return response()->json(['message' => 'OTP sent successfully']);
@@ -83,4 +83,34 @@ class AuthController extends Controller
         return response()->json($result);
     }
 
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $result = $this->authService->sendResetLink($request->email);
+
+        return $result['status']
+            ? response()->json(['message' => $result['message']])
+            : response()->json(['error' => $result['message']], 400);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|min:6|confirmed',
+        ]);
+
+        $result = $this->authService->resetPassword(
+            $request->email,
+            $request->password,
+            $request->password_confirmation,
+            $request->token
+        );
+
+        return $result['status']
+            ? response()->json(['message' => $result['message']])
+            : response()->json(['error' => $result['message']], 400);
+    }
 }

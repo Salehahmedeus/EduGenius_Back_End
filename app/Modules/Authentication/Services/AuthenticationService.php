@@ -148,7 +148,7 @@ class AuthenticationService
             ],
             function ($user, $password) {
                 // Determine which column to update based on your schema
-                $user->password_hash = \Hash::make($password);
+                $user->password_hash = Hash::make($password);
                 $user->save();
                 event(new PasswordReset($user));
             }
