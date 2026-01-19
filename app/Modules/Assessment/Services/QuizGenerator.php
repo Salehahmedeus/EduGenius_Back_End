@@ -4,22 +4,28 @@ namespace App\Modules\Assessment\Services;
 
 use App\Modules\Assessment\Repositories\QuizRepository;
 use App\Modules\AILearning\Repositories\KnowledgeRepository;
-use Illuminate\Support\Facades\Http;
+// 👇 Import the AI Service
+use App\Modules\AILearning\Services\OpenAIService;
 
 class QuizGenerator
 {
     protected $quizRepo;
     protected $knowledgeRepo;
+    protected $aiService; // Added property
 
-    public function __construct(QuizRepository $quizRepo, KnowledgeRepository $knowledgeRepo)
-    {
+    public function __construct(
+        QuizRepository $quizRepo,
+        KnowledgeRepository $knowledgeRepo,
+        OpenAIService $aiService // Inject 
+    ) {
         $this->quizRepo = $quizRepo;
         $this->knowledgeRepo = $knowledgeRepo;
+        $this->aiService = $aiService;
     }
 
     public function generateQuiz($userId, $topic, $difficulty = 1)
     {
-        // 1. Get Context from Student's Notes
+        // 1. Get Context (Same as before)
         $keywords = explode(' ', $topic);
         $localResults = $this->knowledgeRepo->searchByKeywords($userId, $keywords);
 
@@ -32,13 +38,13 @@ class QuizGenerator
             $contextText .= substr($result->content_text, 0, 1000) . "\n";
         }
 
-        // 2. Create the Quiz Session
+        // 2. Create Quiz Session
         $quiz = $this->quizRepo->createQuiz($userId, $topic, $difficulty);
 
-        // 3. Ask AI to generate questions
+        // 3. Ask AI (Now using the Service!)
         $questions = $this->fetchQuestionsFromAI($contextText, $difficulty);
 
-        // 4. Save Questions to DB
+        // 4. Save
         $this->quizRepo->addQuestions($quiz->id, $questions);
 
         return $this->quizRepo->getQuiz($quiz->id);
@@ -58,22 +64,24 @@ class QuizGenerator
             "Format: [{ \"question\": \"...\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"correct_answer\": \"The String Answer\", \"explanation\": \"...\" }] " .
             "\n\nCONTEXT:\n" . $context;
 
-        $apiKey = env('GEMINI_API_KEY');
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={$apiKey}";
 
-        $response = Http::withHeaders(['Content-Type' => 'application/json'])
-            ->post($url, [
-                'contents' => [['parts' => [['text' => $prompt]]]]
-            ]);
+        $rawText = $this->aiService->generateRawContent($prompt);
 
-        if ($response->failed()) {
-            throw new \Exception("AI Generation Failed");
+        if (!$rawText) {
+            throw new \Exception("AI failed to generate quiz.");
         }
 
-        $data = $response->json();
-        $rawText = $data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
+        // Clean up markdown if Gemini adds it (Common issue)
         $cleanJson = str_replace(['```json', '```'], '', $rawText);
 
-        return json_decode($cleanJson, true) ?? [];
+        $json = json_decode($cleanJson, true);
+
+        if (!$json) {
+            // Fallback: Sometimes JSON is valid but wrapped in text. 
+            // For a grad project, throwing an error is acceptable if parsing fails.
+            throw new \Exception("AI returned invalid JSON format.");
+        }
+
+        return $json;
     }
 }
