@@ -12,6 +12,7 @@ use App\Jobs\SendOtpEmailJob;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Auth\Events\PasswordReset;
 
+
 class AuthenticationService
 {
     protected $userRepo;
@@ -122,40 +123,62 @@ class AuthenticationService
     }
 
     /**
-     * Send Reset Link
+     * Step 1: Generate OTP and email it.
      */
-    public function sendResetLink($email)
+    public function sendPasswordResetOtp($email)
     {
-        // Laravel's built-in broker handles the token generation & email
-        $status = Password::broker()->sendResetLink(['email' => $email]);
+        $user = $this->userRepo->findByEmail($email);
 
-        return $status === Password::RESET_LINK_SENT
-            ? ['status' => true, 'message' => __($status)]
-            : ['status' => false, 'message' => __($status)];
+        if (!$user) {
+            // For security, standard practice is to say "If email exists...", 
+            // but for your project, returning an error is fine.
+            return ['status' => false, 'message' => 'User not found'];
+        }
+
+        // 1. Generate 6-digit code
+        $otp = rand(100000, 999999);
+
+        // 2. Save to DB (Reuse the repository method you made earlier)
+        // This sets otp_code and otp_expires_at (10 mins)
+        $this->userRepo->saveOTP($user, $otp);
+
+        // 3. Send Email (Reuse your existing OTPMail class)
+        try {
+            Mail::to($user->email)->send(new OTPMail($otp));
+            return ['status' => true, 'message' => 'OTP code sent to your email'];
+        } catch (\Exception $e) {
+            return ['status' => false, 'message' => 'Failed to send email: ' . $e->getMessage()];
+        }
     }
 
     /**
-     * Reset the Password
+     * Step 2: Verify OTP and Change Password.
      */
-    public function resetPassword($email, $password, $passwordConfirmation, $token)
+    public function resetPasswordWithOtp($email, $otp, $newPassword)
     {
-        $status = Password::broker()->reset(
-            [
-                'email' => $email,
-                'password' => $password,
-                'password_confirmation' => $passwordConfirmation,
-                'token' => $token
-            ],
-            function ($user, $password) {
-                // Determine which column to update based on your schema
-                $user->password_hash = Hash::make($password);
-                $user->save();
-                event(new PasswordReset($user));
-            }
-        );
+        $user = $this->userRepo->findByEmail($email);
 
-        return $status === Password::PASSWORD_RESET
-            ? ['status' => true, 'message' => __($status)]
-            : ['status' => false, 'message' => __($status)];
+        if (!$user) {
+            return ['status' => false, 'message' => 'User not found'];
+        }
+
+        // 1. Check if OTP is valid (Reuse repository logic)
+        // This checks if code matches AND if time < expires_at
+        $isValid = $this->userRepo->verifyOTP($user, $otp);
+
+        if (!$isValid) {
+            return ['status' => false, 'message' => 'Invalid or expired OTP'];
+        }
+
+        // 2. Update Password (The manual fix for password_hash)
+        $user->password_hash = Hash::make($newPassword);
+
+        // 3. Clear OTP fields (Repository verifyOTP does this, but good to be safe)
+        $user->otp_code = null;
+        $user->otp_expires_at = null;
+
+        $user->save();
+
+        return ['status' => true, 'message' => 'Password has been reset successfully'];
     }
 }

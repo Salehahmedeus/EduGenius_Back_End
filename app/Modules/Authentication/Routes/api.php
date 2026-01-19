@@ -3,10 +3,15 @@
 use Illuminate\Support\Facades\Route;
 use App\Modules\Authentication\Controllers\AuthController;
 
+// Registration & Login
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login'])->name('login');
+
+// OTP routes
 Route::post('otp/send', [AuthController::class, 'sendOtp']);
 Route::post('otp/verify', [AuthController::class, 'verifyOtp']);
+
+// Password Reset
 Route::post('password/email', [AuthController::class, 'forgotPassword']);
 Route::post('password/reset', [AuthController::class, 'resetPassword']);
 

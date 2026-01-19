@@ -83,24 +83,42 @@ class AuthController extends Controller
         return response()->json($result);
     }
 
+    /**
+     * Endpoint: POST /api/password/email
+     */
     public function forgotPassword(Request $request)
     {
-        $request->validate(['email' => 'required|email']);
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
 
         $result = $this->authService->sendResetLink($request->email);
 
-        return $result['status']
-            ? response()->json(['message' => $result['message']])
-            : response()->json(['error' => $result['message']], 400);
+        if ($result['status']) {
+            return response()->json(['message' => $result['message']]);
+        } else {
+            return response()->json(['error' => $result['message']], 400);
+        }
     }
 
+    /**
+     * Endpoint: POST /api/password/reset
+     */
     public function resetPassword(Request $request)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'token' => 'required',
             'email' => 'required|email',
-            'password' => 'required|min:6|confirmed',
+            'password' => 'required|min:6|confirmed', // expects 'password_confirmation' field
         ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
 
         $result = $this->authService->resetPassword(
             $request->email,
@@ -109,8 +127,10 @@ class AuthController extends Controller
             $request->token
         );
 
-        return $result['status']
-            ? response()->json(['message' => $result['message']])
-            : response()->json(['error' => $result['message']], 400);
+        if ($result['status']) {
+            return response()->json(['message' => $result['message']]);
+        } else {
+            return response()->json(['error' => $result['message']], 400);
+        }
     }
 }
