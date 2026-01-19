@@ -80,4 +80,17 @@ class QuizController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Endpoint: GET /api/quiz/all
+     */
+    public function index()
+    {
+        try {
+            $quizzes = $this->analyzer->getAllQuizzes(auth('api')->id());
+            return response()->json($quizzes);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 }

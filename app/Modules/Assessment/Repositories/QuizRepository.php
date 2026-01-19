@@ -50,4 +50,15 @@ class QuizRepository
     {
         Quiz::where('id', $quizId)->update(['is_completed' => true]);
     }
+
+    /**
+     * Get ALL quizzes (Completed and Pending).
+     */
+    public function getAllQuizzes($userId)
+    {
+        return \App\Modules\Assessment\Models\Quiz::where('user_id', $userId)
+            ->with('result') // Eager load the score if it exists
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
 }

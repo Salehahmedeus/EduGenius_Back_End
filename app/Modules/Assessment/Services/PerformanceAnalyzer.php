@@ -91,4 +91,21 @@ class PerformanceAnalyzer
 
         return "Good practice. Review the materials and try again.";
     }
+
+    public function getAllQuizzes($userId)
+    {
+        $quizzes = $this->quizRepo->getAllQuizzes($userId);
+
+        // Format the data nicely for the Frontend
+        return $quizzes->map(function ($quiz) {
+            return [
+                'id' => $quiz->id,
+                'topic' => $quiz->topic,
+                'difficulty' => $quiz->difficulty,
+                'status' => $quiz->is_completed ? 'Completed' : 'Pending',
+                'score' => $quiz->result ? $quiz->result->score : null,
+                'date' => $quiz->created_at->format('Y-m-d H:i'),
+            ];
+        });
+    }
 }

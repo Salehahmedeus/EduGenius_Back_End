@@ -9,4 +9,7 @@ Route::middleware('auth:api')->group(function () {
 
     // 2. Submit Answers & Get Score
     Route::post('quiz/submit', [QuizController::class, 'submit']);
+
+    // 3. Get list of all quizzes
+    Route::get('quiz/all', [QuizController::class, 'index']);
 });
