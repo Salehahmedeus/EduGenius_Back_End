@@ -84,4 +84,9 @@ class ResponseSynthesizer
             'source' => 'Direct File Upload'
         ];
     }
+
+    public function deleteChat($userId, $conversationId)
+    {
+        return $this->knowledgeRepo->deleteConversation($userId, $conversationId);
+    }
 }

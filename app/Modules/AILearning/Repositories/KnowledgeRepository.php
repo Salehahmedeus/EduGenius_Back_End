@@ -78,4 +78,26 @@ class KnowledgeRepository
             ->orderBy('updated_at', 'desc')
             ->get(['id', 'context_name', 'created_at']);
     }
+
+    /**
+     * Delete a conversation and all its messages.
+     */
+    public function deleteConversation($userId, $conversationId)
+    {
+        // 1. Find the conversation belonging to this user
+        $chat = ConversationContext::where('user_id', $userId)
+            ->where('id', $conversationId)
+            ->first();
+
+        if (!$chat) {
+            return false; // Chat doesn't exist or doesn't belong to user
+        }
+
+        // 2. Delete it
+        // Because we defined ->onDelete('cascade') in the migration,
+        // this will AUTOMATICALLY delete all related rows in 'ai_responses'.
+        $chat->delete();
+
+        return true;
+    }
 }

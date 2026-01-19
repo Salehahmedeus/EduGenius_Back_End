@@ -80,4 +80,15 @@ class AIServiceController extends Controller
         $messages = $this->aiService->getChatMessages(auth('api')->id(), $id);
         return response()->json($messages);
     }
+
+    public function deleteChat($id)
+    {
+        $success = $this->aiService->deleteChat(auth('api')->id(), $id);
+
+        if (!$success) {
+            return response()->json(['error' => 'Chat not found or unauthorized'], 404);
+        }
+
+        return response()->json(['message' => 'Chat deleted successfully']);
+    }
 }
