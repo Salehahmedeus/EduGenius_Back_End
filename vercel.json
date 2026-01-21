@@ -13,6 +13,10 @@
     ],
     "routes": [
         {
+            "src": "/(css|js|images|storage|assets)/.*",
+            "dest": "/public/$0"
+        },
+        {
             "src": "/(.*)",
             "dest": "/api/index.php"
         }
@@ -22,8 +26,14 @@
         "APP_DEBUG": "false",
         "APP_URL": "https://edu-genius-back-end.vercel.app",
         "APP_KEY": "base64:O2/Iyo6PBdq1tlV0EKuIsYoit0rxC+Dzb9QbpAAz3Dg=",
-        "LOG_CHANNEL": "stderr",
+        "APP_CONFIG_CACHE": "/tmp/config.php",
+        "APP_EVENTS_CACHE": "/tmp/events.php",
+        "APP_PACKAGES_CACHE": "/tmp/packages.php",
+        "APP_ROUTES_CACHE": "/tmp/routes.php",
+        "APP_SERVICES_CACHE": "/tmp/services.php",
+        "VIEW_COMPILED_PATH": "/tmp",
         "CACHE_DRIVER": "array",
+        "LOG_CHANNEL": "stderr",
         "SESSION_DRIVER": "cookie"
     }
 }
