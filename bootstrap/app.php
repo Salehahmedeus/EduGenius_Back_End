@@ -21,12 +21,18 @@ return Application::configure(basePath: dirname(__DIR__))
             ];
 
             foreach ($modules as $module) {
+                // 👇 Method A: Use __DIR__ relative to bootstrap/app.php
+                // bootstrap/ is one level deep, app/ is one level up.
                 $path = __DIR__ . "/../app/Modules/$module/Routes/api.php";
 
                 if (file_exists($path)) {
                     Route::prefix('api')
                         ->middleware('api')
                         ->group($path);
+                }
+                // Fallback: Log if missing (Only works if you have error logs enabled)
+                else {
+                    error_log("Failed to load route: $path");
                 }
             }
         },
