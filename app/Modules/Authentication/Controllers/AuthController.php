@@ -16,9 +16,30 @@ class AuthController extends Controller
         $this->authService = $authService;
     }
 
+    // public function register(Request $request)
+    // {
+    //     // 1. Validation (Presentation Layer)
+    //     $validator = Validator::make($request->all(), [
+    //         'name' => 'required|string|max:255',
+    //         'email' => 'required|string|email|max:255|unique:users',
+    //         'password' => 'required|string|min:6',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json($validator->errors(), 400);
+    //     }
+
+    //     // 2. Call Service (Business Logic Layer)
+    //     $result = $this->authService->registerUser($request->only(['name', 'email', 'password']));
+
+    //     return response()->json($result, 201);
+    // }
+
     public function register(Request $request)
     {
-        // 1. Validation (Presentation Layer)
+        // CHECKPOINT 1: Does the route hit the controller?
+        // return response()->json(['debug' => 'Checkpoint 1: Controller reached']);
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -29,10 +50,35 @@ class AuthController extends Controller
             return response()->json($validator->errors(), 400);
         }
 
-        // 2. Call Service (Business Logic Layer)
-        $result = $this->authService->registerUser($request->only(['name', 'email', 'password']));
+        // CHECKPOINT 2: Did Validation pass?
+        // return response()->json(['debug' => 'Checkpoint 2: Validation passed']);
 
-        return response()->json($result, 201);
+        try {
+            // CHECKPOINT 3: Attempting DB Insert
+            $result = $this->authService->registerUser($request->only(['name', 'email', 'password']));
+
+            if (!$result) {
+                return response()->json(['debug' => 'Checkpoint 3 Failed: User is null']);
+            }
+            // return response()->json(['debug' => 'Checkpoint 3: User Created', 'user_id' => $user->id]);
+
+            // CHECKPOINT 4: Attempting Token Generation
+
+            if (!$result['token']) {
+                return response()->json(['debug' => 'Checkpoint 4 Failed: Token is null']);
+            }
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            // 👇 THIS IS THE MOST IMPORTANT PART
+            // If it crashes, this will catch it and show us the REAL error
+            return response()->json([
+                'debug_error' => true,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ], 500);
+        }
     }
 
     public function login(Request $request)
