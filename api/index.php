@@ -35,6 +35,15 @@ putenv("APP_CONFIG_CACHE={$bootstrapCachePath}/config.php");
 putenv("APP_ROUTES_CACHE={$bootstrapCachePath}/routes.php");
 putenv("APP_EVENTS_CACHE={$bootstrapCachePath}/events.php");
 
+// Handle SQLite Database on Vercel
+$sourceDb = __DIR__ . '/../database/database.sqlite';
+$tempDb = $tmpPath . '/database.sqlite';
+if (!file_exists($tempDb) && file_exists($sourceDb)) {
+    copy($sourceDb, $tempDb);
+}
+putenv("DB_DATABASE={$tempDb}");
+putenv("DB_CONNECTION=sqlite");
+
 // Bootstrap Laravel and handle the request...
 $app = require_once __DIR__ . '/../bootstrap/app.php';
 
