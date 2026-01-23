@@ -37,6 +37,7 @@ return new class extends Migration
             $table->integer('score'); // e.g. 80 (percent)
             $table->integer('total_questions');
             $table->integer('correct_answers');
+            $table->json('attempt_details')->nullable(); // Stores user's answers and correctness
             $table->timestamps();
         });
     }
