@@ -57,7 +57,7 @@ class QuizRepository
     public function getAllQuizzes($userId)
     {
         return \App\Modules\Assessment\Models\Quiz::where('user_id', $userId)
-            ->with('result') // Eager load the score if it exists
+            ->with(['result', 'questions'])
             ->orderBy('created_at', 'desc')
             ->get();
     }
