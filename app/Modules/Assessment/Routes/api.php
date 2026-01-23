@@ -12,4 +12,6 @@ Route::middleware('auth:api')->group(function () {
 
     // 3. Get list of all quizzes
     Route::get('quiz/all', [QuizController::class, 'index']);
+
+    Route::get('quiz/{id}', [QuizController::class, 'show']);
 });

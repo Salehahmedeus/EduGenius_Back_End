@@ -5,21 +5,24 @@ namespace App\Modules\Assessment\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Assessment\Services\QuizGenerator;
 use App\Modules\Assessment\Services\PerformanceAnalyzer;
+use App\Modules\Assessment\Repositories\QuizRepository;
 use Illuminate\Http\Request;
 
 class QuizController extends Controller
 {
     protected $generator;
     protected $analyzer;
+    protected $quizRepo;
 
     /**
      * Dependency Injection:
      * We inject both services here. Laravel automatically finds them.
      */
-    public function __construct(QuizGenerator $generator, PerformanceAnalyzer $analyzer)
+    public function __construct(QuizGenerator $generator, PerformanceAnalyzer $analyzer, QuizRepository $quizRepo)
     {
         $this->generator = $generator;
         $this->analyzer = $analyzer;
+        $this->quizRepo = $quizRepo;
     }
 
     /**
@@ -89,6 +92,19 @@ class QuizController extends Controller
         try {
             $quizzes = $this->analyzer->getAllQuizzes(auth('api')->id());
             return response()->json($quizzes);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function show($id)
+    {
+        try {
+            $quiz = $this->quizRepo->getQuiz($id);
+            if (!$quiz) {
+                return response()->json(['error' => 'Quiz not found'], 404);
+            }
+            return response()->json($quiz);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
