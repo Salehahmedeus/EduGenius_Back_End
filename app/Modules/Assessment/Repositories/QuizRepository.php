@@ -32,17 +32,18 @@ class QuizRepository
 
     public function getQuiz($id)
     {
-        return Quiz::with('questions')->find($id);
+        return Quiz::with(['questions', 'result'])->find($id);
     }
 
-    public function saveResult($userId, $quizId, $score, $total, $correct)
+    public function saveResult($userId, $quizId, $score, $total, $correct, $details = null)
     {
         return QuizResult::create([
             'user_id' => $userId,
             'quiz_id' => $quizId,
             'score' => $score,
             'total_questions' => $total,
-            'correct_answers' => $correct
+            'correct_answers' => $correct,
+            'attempt_details' => $details
         ]);
     }
 
@@ -56,7 +57,7 @@ class QuizRepository
      */
     public function getAllQuizzes($userId)
     {
-        return \App\Modules\Assessment\Models\Quiz::where('user_id', $userId)
+        return Quiz::where('user_id', $userId)
             ->with(['result', 'questions'])
             ->orderBy('created_at', 'desc')
             ->get();
