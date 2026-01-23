@@ -46,6 +46,7 @@ class PerformanceAnalyzer
             $details[] = [
                 'question_id' => $question->id,
                 'is_correct' => $isCorrect,
+                'selected_option' => $userAns,
                 'correct_answer' => $question->correct_answer,
                 'explanation' => $question->explanation
             ];

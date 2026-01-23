@@ -32,8 +32,19 @@ class QuizRepository
 
     public function getQuiz($id)
     {
+        // Return the Quiz with its questions and the user's result (if any)
         return Quiz::with(['questions', 'result'])->find($id);
     }
+
+    public function getQuizResult($id)
+    {
+        // Return the Result with the Quiz and Questions loaded
+        return QuizResult::where('quiz_id', $id)
+            ->with('quiz.questions')
+            ->first();
+    }
+
+
 
     public function saveResult($userId, $quizId, $score, $total, $correct, $details = null)
     {

@@ -14,4 +14,6 @@ Route::middleware('auth:api')->group(function () {
     Route::get('quiz/all', [QuizController::class, 'index']);
 
     Route::get('quiz/{id}', [QuizController::class, 'show']);
+
+    Route::get('quiz/result/{id}', [QuizController::class, 'showResult']);
 });
