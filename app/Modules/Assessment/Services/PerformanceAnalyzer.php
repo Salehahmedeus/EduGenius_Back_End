@@ -96,7 +96,6 @@ class PerformanceAnalyzer
     {
         $quizzes = $this->quizRepo->getAllQuizzes($userId);
 
-        // Format the data nicely for the Frontend
         return $quizzes->map(function ($quiz) {
             return [
                 'id' => $quiz->id,
@@ -105,6 +104,8 @@ class PerformanceAnalyzer
                 'status' => $quiz->is_completed ? 'Completed' : 'Pending',
                 'score' => $quiz->result ? $quiz->result->score : null,
                 'date' => $quiz->created_at->format('Y-m-d H:i'),
+                // We pass the raw questions so Flutter can count them (length)
+                'questions' => $quiz->questions
             ];
         });
     }
