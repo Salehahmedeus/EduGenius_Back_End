@@ -36,13 +36,7 @@ class QuizRepository
         return Quiz::with(['questions', 'result'])->find($id);
     }
 
-    public function getQuizResult($id)
-    {
-        // Return the Result with the Quiz and Questions loaded
-        return QuizResult::where('quiz_id', $id)
-            ->with('quiz.questions')
-            ->first();
-    }
+
 
 
 

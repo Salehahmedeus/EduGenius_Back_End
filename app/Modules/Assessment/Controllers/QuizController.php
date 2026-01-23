@@ -109,17 +109,4 @@ class QuizController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-
-    public function showResult($id)
-    {
-        try {
-            $quiz = $this->quizRepo->getQuizResult($id);
-            if (!$quiz) {
-                return response()->json(['error' => 'Quiz not found'], 404);
-            }
-            return response()->json($quiz);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
 }
