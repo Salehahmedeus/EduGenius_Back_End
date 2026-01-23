@@ -54,7 +54,7 @@ class PerformanceAnalyzer
         $score = ($total > 0) ? ($correctCount / $total) * 100 : 0;
 
         // Save Result
-        $this->quizRepo->saveResult($userId, $quizId, $score, $total, $correctCount);
+        $this->quizRepo->saveResult($userId, $quizId, $score, $total, $correctCount, $details);
         $this->quizRepo->markCompleted($quizId);
 
         // Record to History (Progress Tracking)
