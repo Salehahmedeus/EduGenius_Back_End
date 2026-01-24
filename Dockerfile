@@ -1,7 +1,6 @@
-# 1. Use PHP 8.2 with Apache
 FROM php:8.2-apache
 
-# 2. Install Linux Libraries (Zip, SQL, etc)
+# 1. Install Linux Libraries + SUPERVISOR (Added supervisor here)
 RUN apt-get update && apt-get install -y \
     libzip-dev \
     zip \
@@ -10,36 +9,43 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     git \
-    curl
+    curl \
+    supervisor 
 
-# 3. Clear cache
+# 2. Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 4. Install PHP Extensions
+# 3. Install PHP Extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# 5. Enable Apache Rewrite Module (For Laravel Routes)
+# 4. Enable Apache Rewrite
 RUN a2enmod rewrite
 
-# 6. Set the Document Root to /public
+# 5. Set Document Root
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf.0
 
-# 7. Install Composer
+# 6. Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 8. Set Working Directory
+# 7. Set Working Directory
 WORKDIR /var/www/html
 
-# 9. Copy Project Files
+# 8. Copy Project Files
 COPY . .
 
-# 10. Install PHP Dependencies
+# 9. Install PHP Dependencies
 RUN composer install --no-interaction --optimize-autoloader --no-dev
 
-# 11. Set Permissions (Crucial for Storage)
+# 10. Set Permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# 12. Expose Port 80
+# 11. Copy Supervisor Config (NEW STEP)
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# 12. Expose Port
 EXPOSE 80
+
+# 13. Start Supervisor (CHANGED FROM APACHE)
+CMD ["/usr/bin/supervisord"]
