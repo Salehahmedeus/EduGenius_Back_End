@@ -48,8 +48,12 @@ RUN chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 # 12. Copy Supervisor Config
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# 13. Expose Port
+# 13. Copy Startup Script (NEW)
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# 14. Expose Port
 EXPOSE 80
 
-# 14. Start Supervisor
-CMD ["/usr/bin/supervisord"]
+# 15. Start via Entrypoint Script (CHANGED)
+CMD ["/usr/local/bin/docker-entrypoint.sh"]
