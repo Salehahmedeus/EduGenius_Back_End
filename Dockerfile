@@ -41,8 +41,9 @@ COPY . .
 # 10. Install PHP Dependencies
 RUN composer install --no-interaction --optimize-autoloader --no-dev
 
-# 11. Set Permissions
+# 11. Set Permissions (UPDATED)
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 
 # 12. Copy Supervisor Config
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
