@@ -3,6 +3,7 @@
 namespace App\Modules\ProgressTracking\Services;
 
 use App\Modules\ProgressTracking\Repositories\AnalyticsRepository;
+use Illuminate\Support\Facades\Cache;
 
 class VisualizationService
 {
@@ -15,20 +16,26 @@ class VisualizationService
 
     public function getFullDashboard($userId)
     {
-        $trend = $this->repo->getPerformanceTrend($userId);
-        $topics = $this->repo->getTopicPerformance($userId);
-        $activities = $this->repo->getActivityDistribution($userId);
-        $summary = $this->repo->getSummaryStats($userId);
+        // Cache this result for 60 seconds
+        // Key is unique per user: "dashboard_stats_12"
+        return Cache::remember("dashboard_stats_{$userId}", 60, function () use ($userId) {
 
-        return [
-            'summary' => $summary,
-            'charts' => [
-                'performance_trend' => $trend, // [{date: "2024-01-01", avg_score: 80}, ...]
-                'topic_strengths' => $topics,  // [{topic: "Physics", avg_score: 90}, ...]
-                'activity_breakdown' => $activities // [{activity_type: "quiz", count: 5}, ...]
-            ],
-            'insights' => $this->generateInsights($topics, $summary['avg_score'])
-        ];
+            // This heavy logic only runs once per minute now!
+            $trend = $this->repo->getPerformanceTrend($userId);
+            $topics = $this->repo->getTopicPerformance($userId);
+            $activities = $this->repo->getActivityDistribution($userId);
+            $summary = $this->repo->getSummaryStats($userId);
+
+            return [
+                'summary' => $summary,
+                'charts' => [
+                    'performance_trend' => $trend,
+                    'topic_strengths' => $topics,
+                    'activity_breakdown' => $activities
+                ],
+                'insights' => $this->generateInsights($topics, $summary['avg_score'])
+            ];
+        });
     }
 
     /**
