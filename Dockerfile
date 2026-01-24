@@ -1,6 +1,7 @@
+# 1. Use PHP 8.2 with Apache
 FROM php:8.2-apache
 
-# 1. Install Linux Libraries + SUPERVISOR (Added supervisor here)
+# 2. Install Linux Libraries + SUPERVISOR
 RUN apt-get update && apt-get install -y \
     libzip-dev \
     zip \
@@ -10,42 +11,44 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     git \
     curl \
-    supervisor 
+    supervisor
 
-# 2. Clear cache
+# 3. Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 3. Install PHP Extensions
+# 4. Install PHP Extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# 4. Enable Apache Rewrite
+# 5. Enable Apache Rewrite Module
 RUN a2enmod rewrite
 
-# 5. Set Document Root
+# 6. Set the Document Root to /public
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf.0
 
-# 6. Install Composer
+# 👇 FIXED LINES HERE (Removed .0)
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+# 7. Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 7. Set Working Directory
+# 8. Set Working Directory
 WORKDIR /var/www/html
 
-# 8. Copy Project Files
+# 9. Copy Project Files
 COPY . .
 
-# 9. Install PHP Dependencies
+# 10. Install PHP Dependencies
 RUN composer install --no-interaction --optimize-autoloader --no-dev
 
-# 10. Set Permissions
+# 11. Set Permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# 11. Copy Supervisor Config (NEW STEP)
+# 12. Copy Supervisor Config
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# 12. Expose Port
+# 13. Expose Port
 EXPOSE 80
 
-# 13. Start Supervisor (CHANGED FROM APACHE)
+# 14. Start Supervisor
 CMD ["/usr/bin/supervisord"]
