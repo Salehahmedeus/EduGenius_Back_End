@@ -15,6 +15,7 @@ class AnalyticsController extends Controller
     protected $repo;
     protected $dashboardService;
     protected $vizService;
+    protected $aiService;
 
     /**
      * Dependency Injection:
@@ -23,11 +24,13 @@ class AnalyticsController extends Controller
     public function __construct(
         AnalyticsRepository $repo,
         DashboardService $dashboardService,
-        VisualizationService $vizService
+        VisualizationService $vizService,
+        \App\Modules\AILearning\Services\OpenAIService $aiService // Inject AI
     ) {
         $this->repo = $repo;
         $this->dashboardService = $dashboardService;
         $this->vizService = $vizService;
+        $this->aiService = $aiService;
     }
 
     /**
@@ -67,10 +70,13 @@ class AnalyticsController extends Controller
      * Endpoint: POST /api/dashboard/report
      * Description: Generates a static snapshot (Progress Report) and saves it to DB.
      */
-    public function generateReport()
+    public function generateReport(Request $request)
     {
         try {
             $userId = auth('api')->id();
+
+            // Get Language (Default 'en')
+            $lang = $request->header('Accept-Language', 'en');
 
             // Fetch raw data needed for the report
             $stats = $this->repo->getUnifiedStats($userId);
@@ -81,6 +87,26 @@ class AnalyticsController extends Controller
             $weaknesses = $topicStats->where('avg_score', '<', 60)->pluck('topic')->toArray();
             $allTopics = $topicStats->pluck('topic')->toArray();
 
+            // === Generate AI Summary (Academic Tone) ===
+            $avgScore = $stats['avg_score'];
+            $quizCount = $stats['quiz_count'];
+            $strengthStr = implode(', ', $strengths);
+            $weaknessStr = implode(', ', $weaknesses);
+
+            if (str_starts_with($lang, 'ar')) {
+                $prompt = "قم بإنشاء ملخص أكاديمي رسمي (من 20-30 كلمة) لتقرير تقدم الطالب.
+                البيانات: متوسط الدرجات: $avgScore%، عدد الاختبارات: $quizCount.
+                نقاط القوة: $strengthStr. نقاط الضعف: $weaknessStr.
+                استخدم نبرة تحليلية موضوعية. ركز على الإنجاز ومجالات التحسين.";
+            } else {
+                $prompt = "Generate a formal, academic summary (20-30 words) for a student progress report.
+                Data: Average Score: $avgScore%, Quizzes: $quizCount.
+                Strengths: $strengthStr. Weaknesses: $weaknessStr.
+                Use an analytical, objective tone. Focus on achievement and areas for improvement.";
+            }
+
+            $summary = $this->aiService->generateRawContent($prompt, $lang);
+
             // Save to Database (Compliance with Section 2.6.3.11)
             $report = ProgressReport::create([
                 'user_id' => $userId,
@@ -89,11 +115,14 @@ class AnalyticsController extends Controller
                 'topics_studied' => $allTopics,
                 'strengths' => $strengths,
                 'weaknesses' => $weaknesses,
+                'summary' => $summary, // Save AI Summary
                 'generated_at' => now()
             ]);
 
+            $msg = str_starts_with($lang, 'ar') ? 'تم إنشاء تقرير التقدم بنجاح' : 'Progress report generated successfully';
+
             return response()->json([
-                'message' => 'Progress report generated successfully',
+                'message' => $msg,
                 'data' => $report
             ]);
         } catch (\Exception $e) {

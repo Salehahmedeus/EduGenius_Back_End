@@ -15,6 +15,7 @@ class ProgressReport extends Model
         'topics_studied',
         'strengths',
         'weaknesses',
+        'summary',
         'generated_at'
     ];
 

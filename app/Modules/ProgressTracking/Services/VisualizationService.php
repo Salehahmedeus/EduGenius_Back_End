@@ -50,21 +50,21 @@ class VisualizationService
         $bestTopic = $topics->first() ? $topics->first()->topic : 'None';
 
         if (str_starts_with($language, 'ar')) {
-            $prompt = "قم بتحليل أداء الطالب التالي:
+            $prompt = "قم بتحليل أداء الطالب التالي تحليلاً أكاديمياً دقيقاً:
             متوسط الدرجات: $avgScore%
             عدد الاختبارات: $quizCount
             أقوى موضوع: $bestTopic
             
-            قم بإنشاء 3 رؤى قصيرة ومحفزة (بحد أقصى 10 كلمات لكل منها).
-            أرجع فقط مصفوفة JSON من النصوص. مثال: [\"عمل رائع في الجبر!\", \"حاول تحسين الهندسة.\"]";
+            قم بإنشاء 3 ملاحظات تحليلية أكاديمية (بحد أقصى 15 كلمة لكل منها). ركز على الفجوات المعرفية ومؤشرات الإتقان.
+            أرجع فقط مصفوفة JSON من النصوص. مثال: [\"يظهر الطالب إتقاناً عالياً في الجبر، لكن هناك ضعف ملحوظ في الهندسة.\", \"معدل الأداء يشير إلى حاجة لمراجعة المفاهيم الأساسية.\"]";
         } else {
-            $prompt = "Analyze this student's performance: 
+            $prompt = "Analyze this student's performance with strict academic rigor: 
             Average Score: $avgScore%
             Total Quizzes: $quizCount
             Strongest Topic: $bestTopic
             
-            Generate 3 short, motivating, bullet-point insights (max 10 words each). 
-            Return ONLY a JSON array of strings. Example: [\"Great work on Algebra!\", \"Try to improve Geometry.\"]";
+            Generate 3 analytical, academic observations (max 15 words each). Focus on mastery gaps and performance trends.
+            Return ONLY a JSON array of strings. Example: [\"Student demonstrates mastery in Algebra, but shows a conceptual gap in Geometry.\", \"Performance trend indicates a need for reinforced study in basic concepts.\"]";
         }
 
         // Call AI Service with Language
