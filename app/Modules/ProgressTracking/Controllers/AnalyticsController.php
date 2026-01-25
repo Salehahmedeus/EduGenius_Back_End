@@ -2,78 +2,73 @@
 
 namespace App\Modules\ProgressTracking\Controllers;
 
-use App\Modules\ProgressTracking\Repositories\AnalyticsRepository;
 use App\Http\Controllers\Controller;
 use App\Modules\ProgressTracking\Services\VisualizationService;
-use App\Modules\ProgressTracking\Services\DashboardService; // (The one we made for Home Screen)
+use App\Modules\ProgressTracking\Services\DashboardService;
 use Illuminate\Http\Request;
-use App\Modules\ProgressTracking\Models\ProgressReport;
 
 class AnalyticsController extends Controller
 {
     protected $vizService;
     protected $homeService;
-    protected $repo;
 
     public function __construct(
         VisualizationService $vizService,
-        DashboardService $homeService,
-        AnalyticsRepository $repo
+        DashboardService $homeService
     ) {
         $this->vizService = $vizService;
         $this->homeService = $homeService;
-        $this->repo = $repo;
     }
 
     /**
      * Endpoint: GET /api/dashboard/home
-     * Use: For the Main Home Screen (Quick summary)
+     * The "Super Endpoint" that powers the entire Dashboard Screen.
      */
-    public function home()
+    public function home(Request $request)
     {
-        $data = $this->homeService->getHomeData(auth('api')->user());
-        return response()->json($data);
-    }
+        $user = auth('api')->user();
 
-    /**
-     * Endpoint: GET /api/dashboard/stats
-     * Use: For the "Statistics" Tab (Detailed charts)
-     */
-    public function stats()
-    {
-        $data = $this->vizService->getFullDashboard(auth('api')->id());
-        return response()->json($data);
+        // 1. Get Basic Info
+        $basicData = $this->homeService->getHomeData($user);
+
+        // 2. Get Charts & Stats (Cached via Redis inside the service)
+        $statsData = $this->vizService->getFullDashboard($user->id);
+
+        // 3. Merge and Return
+        return response()->json(array_merge($basicData, $statsData));
     }
 
     /**
      * Endpoint: POST /api/dashboard/report
-     * Generates a static snapshot of current progress and saves it.
+     * Generates a permanent report card.
      */
     public function generateReport()
     {
-        $userId = auth('api')->id();
-        $stats = $this->repo->getSummaryStats($userId);
-        $topics = $this->repo->getTopicPerformance($userId);
+        try {
+            $userId = auth('api')->id();
 
-        // Identify Strengths/Weaknesses logic
-        $strengths = $topics->where('avg_score', '>=', 80)->pluck('topic')->toArray();
-        $weaknesses = $topics->where('avg_score', '<', 60)->pluck('topic')->toArray();
-        $allTopics = $topics->pluck('topic')->toArray();
+            // Logic to create the static report snapshot
+            // (We instantiate the repository directly here for the specific report logic)
+            $repo = new \App\Modules\ProgressTracking\Repositories\AnalyticsRepository();
+            $stats = $repo->getSummaryStats($userId);
+            $topics = $repo->getTopicPerformance($userId);
 
-        // Save to Database (Section 2.6.3.11 Compliance)
-        $report = ProgressReport::create([
-            'user_id' => $userId,
-            'total_quizzes' => $stats['total_quizzes'],
-            'average_score' => $stats['avg_score'],
-            'topics_studied' => $allTopics,
-            'strengths' => $strengths,
-            'weaknesses' => $weaknesses,
-            'generated_at' => now()
-        ]);
+            $report = \App\Modules\ProgressTracking\Models\ProgressReport::create([
+                'user_id' => $userId,
+                'total_quizzes' => $stats['total_quizzes'],
+                'average_score' => $stats['avg_score'],
+                'topics_studied' => $topics->pluck('topic')->toArray(),
+                'strengths' => $topics->where('avg_score', '>=', 80)->pluck('topic')->toArray(),
+                'weaknesses' => $topics->where('avg_score', '<', 60)->pluck('topic')->toArray(),
+                'generated_at' => now()
+            ]);
 
-        return response()->json([
-            'message' => 'Progress report generated successfully',
-            'data' => $report
-        ]);
+            return response()->json([
+                'message' => 'Report generated successfully',
+                'data' => $report
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 }
