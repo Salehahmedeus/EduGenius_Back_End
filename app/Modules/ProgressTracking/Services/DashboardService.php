@@ -14,71 +14,44 @@ class DashboardService
         $this->repo = $repo;
     }
 
-    /**
-     * Get data for the Main Home Screen.
-     */
-    public function getHomeData($user)
+    public function getBasicInfo($user, array $stats)
     {
-        // 1. Get Summary Stats (Reusing the repo method)
-        $stats = $this->repo->getSummaryStats($user->id);
+        // 1. Format User
+        $userData = [
+            'name' => $user->name,
+            'avatar_initials' => strtoupper(substr($user->name, 0, 2)),
+            'email' => $user->email
+        ];
 
-        // 2. Get Recent Activity
-        // We need to add a method to AnalyticsRepository for this
+        // 2. Format Recent Activities
         $rawHistory = $this->repo->getRecentActivity($user->id);
-
-        $recentActivities = $rawHistory->map(function ($item) {
+        $activities = $rawHistory->map(function ($item) {
             return [
                 'id' => $item->id,
-                'title' => $item->topic ?? 'General Study',
-                'type' => $item->activity_type, // 'upload', 'quiz', 'ai_tutor'
+                'title' => $item->topic ?? 'General Activity',
+                'type' => $item->activity_type,
                 'time_ago' => Carbon::parse($item->created_at)->diffForHumans()
             ];
         });
 
         // 3. Generate Smart Recommendation
-        $recommendation = $this->generateRecommendation($user->id, $stats);
+        $recommendation = $this->generateRecommendation($stats);
 
         return [
-            'user' => [
-                'name' => $user->name,
-                // Get initials (e.g. "Ahmed Saleh" -> "AS")
-                'avatar_initials' => strtoupper(substr($user->name, 0, 2))
-            ],
-            'progress' => [
-                'uploaded_count' => \App\Modules\ContentManagement\Models\UploadedMaterial::where('user_id', $user->id)->count(),
-                'quiz_count' => $stats['total_quizzes'],
-                'average_score' => $stats['avg_score']
-            ],
-            'recent_activities' => $recentActivities,
+            'user' => $userData,
+            'recent_activities' => $activities,
             'recommendation' => $recommendation
         ];
     }
 
-    private function generateRecommendation($userId, $stats)
+    private function generateRecommendation($stats)
     {
-        // Logic 1: New User?
-        if ($stats['total_quizzes'] === 0 && $stats['total_study_sessions'] === 0) {
-            return [
-                'has_recommendation' => true,
-                'text' => "Welcome! Start by uploading your first course material.",
-                'action' => 'upload'
-            ];
+        if ($stats['uploaded_count'] == 0) {
+            return ['text' => "Start by uploading your first PDF.", 'action' => 'upload'];
         }
-
-        // Logic 2: Low Score?
-        if ($stats['avg_score'] > 0 && $stats['avg_score'] < 60) {
-            return [
-                'has_recommendation' => true,
-                'text' => "Your quiz scores are low. Try asking the AI Tutor to explain difficult concepts.",
-                'action' => 'chat'
-            ];
+        if ($stats['quiz_count'] > 0 && $stats['avg_score'] < 60) {
+            return ['text' => "Your scores are low. Ask the AI for help.", 'action' => 'chat'];
         }
-
-        // Default
-        return [
-            'has_recommendation' => true,
-            'text' => "You are doing great! Keep learning.",
-            'action' => 'none'
-        ];
+        return ['text' => "Keep up the great work!", 'action' => 'none'];
     }
 }

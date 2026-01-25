@@ -3,7 +3,6 @@
 namespace App\Modules\ProgressTracking\Services;
 
 use App\Modules\ProgressTracking\Repositories\AnalyticsRepository;
-use Illuminate\Support\Facades\Cache;
 
 class VisualizationService
 {
@@ -14,56 +13,46 @@ class VisualizationService
         $this->repo = $repo;
     }
 
-    public function getFullDashboard($userId)
+    public function getVisuals($userId, array $stats)
     {
-        // Cache this result for 60 seconds
-        // Key is unique per user: "dashboard_stats_12"
-        return Cache::remember("dashboard_stats_{$userId}", 60, function () use ($userId) {
+        // 1. Fetch Chart Data
+        $trend = $this->repo->getPerformanceTrend($userId);
+        $topics = $this->repo->getTopicPerformance($userId);
+        $activities = $this->repo->getActivityDistribution($userId);
 
-            // This heavy logic only runs once per minute now!
-            $trend = $this->repo->getPerformanceTrend($userId);
-            $topics = $this->repo->getTopicPerformance($userId);
-            $activities = $this->repo->getActivityDistribution($userId);
-            $summary = $this->repo->getSummaryStats($userId);
+        // 2. Format Charts
+        $charts = [
+            'performance_trend' => $trend,
+            'topic_strengths' => $topics,
+            'activity_breakdown' => $activities
+        ];
 
-            return [
-                'summary' => $summary,
-                'charts' => [
-                    'performance_trend' => $trend,
-                    'topic_strengths' => $topics,
-                    'activity_breakdown' => $activities
-                ],
-                'insights' => $this->generateInsights($topics, $summary['avg_score'])
-            ];
-        });
+        // 3. Generate Insights using the passed Stats + Topic data
+        $insights = $this->generateInsights($stats, $topics);
+
+        return [
+            'charts' => $charts,
+            'insights' => $insights
+        ];
     }
 
-    /**
-     * AI-like Logic: Generate text advice based on data.
-     */
-    private function generateInsights($topics, $avgScore)
+    private function generateInsights($stats, $topics)
     {
         $insights = [];
 
-        // 1. General Health
-        if ($avgScore > 85) {
-            $insights[] = "You are performing excellently! Keep it up.";
-        } elseif ($avgScore < 50) {
-            $insights[] = "Try reviewing your uploaded materials before taking more quizzes.";
+        // Insight based on global average
+        if ($stats['avg_score'] >= 80) {
+            $insights[] = "Overall Performance: Excellent (${stats['avg_score']}%)";
         }
 
-        // 2. Specific Topics
+        // Insight based on specific topics
         if ($topics->isNotEmpty()) {
             $best = $topics->first();
-            $worst = $topics->last();
+            $insights[] = "Strongest Topic: {$best->topic} ({$best->avg_score}%)";
+        }
 
-            $insights[] = "Your strongest subject is **{$best->topic}** ({$best->avg_score}%).";
-
-            if ($worst->avg_score < 60) {
-                $insights[] = "You should focus more on **{$worst->topic}**. Try asking the AI Tutor for help with this topic.";
-            }
-        } else {
-            $insights[] = "Complete more quizzes to unlock detailed insights.";
+        if (empty($insights)) {
+            $insights[] = "Take more quizzes to see detailed insights.";
         }
 
         return $insights;

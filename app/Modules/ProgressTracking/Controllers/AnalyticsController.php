@@ -3,68 +3,95 @@
 namespace App\Modules\ProgressTracking\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\ProgressTracking\Services\VisualizationService;
-use App\Modules\ProgressTracking\Services\DashboardService;
 use Illuminate\Http\Request;
+
+// 👇 Import your Services and Repository
+use App\Modules\ProgressTracking\Repositories\AnalyticsRepository;
+use App\Modules\ProgressTracking\Services\DashboardService;
+use App\Modules\ProgressTracking\Services\VisualizationService;
+use App\Modules\ProgressTracking\Models\ProgressReport;
 
 class AnalyticsController extends Controller
 {
+    protected $repo;
+    protected $dashboardService;
     protected $vizService;
-    protected $homeService;
 
+    /**
+     * Dependency Injection:
+     * We inject the Repository (for raw data) and both Services (for formatting).
+     */
     public function __construct(
-        VisualizationService $vizService,
-        DashboardService $homeService
+        AnalyticsRepository $repo,
+        DashboardService $dashboardService,
+        VisualizationService $vizService
     ) {
+        $this->repo = $repo;
+        $this->dashboardService = $dashboardService;
         $this->vizService = $vizService;
-        $this->homeService = $homeService;
     }
 
     /**
      * Endpoint: GET /api/dashboard/home
-     * The "Super Endpoint" that powers the entire Dashboard Screen.
+     * Description: Returns the "Master JSON" for the Home Screen.
      */
     public function home(Request $request)
     {
         $user = auth('api')->user();
+        $userId = $user->id;
 
-        // 1. Get Basic Info
-        $basicData = $this->homeService->getHomeData($user);
+        // 1. Fetch Stats ONCE (Source of Truth)
+        // We get the numbers here and pass them down to avoid recalculating
+        $stats = $this->repo->getUnifiedStats($userId);
 
-        // 2. Get Charts & Stats (Cached via Redis inside the service)
-        $statsData = $this->vizService->getFullDashboard($user->id);
+        // 2. Get Basic Info (User Profile, Recents List, Recommendation)
+        $basicInfo = $this->dashboardService->getBasicInfo($user, $stats);
 
-        // 3. Merge and Return
-        return response()->json(array_merge($basicData, $statsData));
+        // 3. Get Visuals (Charts, Insights)
+        $visuals = $this->vizService->getVisuals($userId, $stats);
+
+        // 4. Construct Final JSON manually to match your exact requirement
+        return response()->json([
+            'user'              => $basicInfo['user'],
+            'stats'             => $stats,
+            'recommendation'    => $basicInfo['recommendation'],
+            'recent_activities' => $basicInfo['recent_activities'],
+            'charts'            => $visuals['charts'],
+            'insights'          => $visuals['insights'],
+        ]);
     }
 
     /**
      * Endpoint: POST /api/dashboard/report
-     * Generates a permanent report card.
+     * Description: Generates a static snapshot (Progress Report) and saves it to DB.
      */
     public function generateReport()
     {
         try {
             $userId = auth('api')->id();
 
-            // Logic to create the static report snapshot
-            // (We instantiate the repository directly here for the specific report logic)
-            $repo = new \App\Modules\ProgressTracking\Repositories\AnalyticsRepository();
-            $stats = $repo->getSummaryStats($userId);
-            $topics = $repo->getTopicPerformance($userId);
+            // Fetch raw data needed for the report
+            $stats = $this->repo->getUnifiedStats($userId);
+            $topicStats = $this->repo->getTopicPerformance($userId); // Need raw topic collection
 
-            $report = \App\Modules\ProgressTracking\Models\ProgressReport::create([
+            // Calculate Strengths & Weaknesses
+            $strengths = $topicStats->where('avg_score', '>=', 80)->pluck('topic')->toArray();
+            $weaknesses = $topicStats->where('avg_score', '<', 60)->pluck('topic')->toArray();
+            $allTopics = $topicStats->pluck('topic')->toArray();
+
+            // Save to Database (Compliance with Section 2.6.3.11)
+            $report = ProgressReport::create([
                 'user_id' => $userId,
-                'total_quizzes' => $stats['total_quizzes'],
+                'total_quizzes' => $stats['quiz_count'],
                 'average_score' => $stats['avg_score'],
-                'topics_studied' => $topics->pluck('topic')->toArray(),
-                'strengths' => $topics->where('avg_score', '>=', 80)->pluck('topic')->toArray(),
-                'weaknesses' => $topics->where('avg_score', '<', 60)->pluck('topic')->toArray(),
+                'topics_studied' => $allTopics,
+                'strengths' => $strengths,
+                'weaknesses' => $weaknesses,
                 'generated_at' => now()
             ]);
 
             return response()->json([
-                'message' => 'Report generated successfully',
+                'message' => 'Progress report generated successfully',
                 'data' => $report
             ]);
         } catch (\Exception $e) {

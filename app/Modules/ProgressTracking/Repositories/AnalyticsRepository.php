@@ -3,14 +3,39 @@
 namespace App\Modules\ProgressTracking\Repositories;
 
 use App\Modules\Assessment\Models\QuizResult;
+use App\Modules\ContentManagement\Models\UploadedMaterial;
 use App\Modules\ProgressTracking\Models\LearningHistory;
 use Illuminate\Support\Facades\DB;
 
 class AnalyticsRepository
 {
     /**
-     * Chart 1: Line Chart (Scores over Time)
-     * Groups quiz scores by date.
+     * 1. The Master Stats (Single Query logic)
+     */
+    public function getUnifiedStats($userId)
+    {
+        return [
+            'uploaded_count' => UploadedMaterial::where('user_id', $userId)->count(),
+            'quiz_count'     => QuizResult::where('user_id', $userId)->count(),
+            // Get average score formatted to 1 decimal place (e.g. 85.5)
+            'avg_score'      => round(QuizResult::where('user_id', $userId)->avg('score') ?? 0, 1),
+            'study_sessions' => LearningHistory::where('user_id', $userId)->count(),
+        ];
+    }
+
+    /**
+     * 2. Recent Activity Feed
+     */
+    public function getRecentActivity($userId)
+    {
+        return LearningHistory::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+    }
+
+    /**
+     * 3. Chart Data (Performance Trend)
      */
     public function getPerformanceTrend($userId)
     {
@@ -18,17 +43,15 @@ class AnalyticsRepository
             ->select(DB::raw('DATE(created_at) as date'), DB::raw('AVG(score) as avg_score'))
             ->groupBy('date')
             ->orderBy('date', 'asc')
-            ->take(30) // Last 30 days
+            ->take(10)
             ->get();
     }
 
     /**
-     * Chart 2: Radar/Bar Chart (Strengths & Weaknesses)
-     * Groups scores by Topic.
+     * 4. Chart Data (Topic Strengths)
      */
     public function getTopicPerformance($userId)
     {
-        // Join quiz_results -> quizzes to get the topic name
         return DB::table('quiz_results')
             ->join('quizzes', 'quiz_results.quiz_id', '=', 'quizzes.id')
             ->where('quiz_results.user_id', $userId)
@@ -39,37 +62,13 @@ class AnalyticsRepository
     }
 
     /**
-     * Chart 3: Pie Chart (Activity Distribution)
-     * Counts how many times user did each activity.
+     * 5. Chart Data (Activity Pie)
      */
     public function getActivityDistribution($userId)
     {
         return LearningHistory::where('user_id', $userId)
             ->select('activity_type', DB::raw('count(*) as count'))
             ->groupBy('activity_type')
-            ->get();
-    }
-
-    /**
-     * Headline Stats (Top Cards)
-     */
-    public function getSummaryStats($userId)
-    {
-        return [
-            'total_quizzes' => QuizResult::where('user_id', $userId)->count(),
-            'avg_score' => round(QuizResult::where('user_id', $userId)->avg('score') ?? 0, 1),
-            'total_study_sessions' => LearningHistory::where('user_id', $userId)->count(),
-        ];
-    }
-
-    /**
-     * Get the 5 most recent actions for the Home Screen list.
-     */
-    public function getRecentActivity($userId)
-    {
-        return LearningHistory::where('user_id', $userId)
-            ->orderBy('created_at', 'desc')
-            ->take(5)
             ->get();
     }
 }
