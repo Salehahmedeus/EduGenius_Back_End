@@ -32,22 +32,51 @@ class FileProcessor
 
     private function extractPdf($path)
     {
-        $parser = new Parser();
-        $pdf = $parser->parseFile($path);
-        return $pdf->getText();
+        try {
+            $parser = new Parser();
+            $pdf = $parser->parseFile($path);
+            if (!$pdf) {
+                return "";
+            }
+            return is_callable([$pdf, 'getText']) ? $pdf->getText() : "";
+        } catch (\Exception $e) {
+            Log::error("PDF Extraction Error: " . $e->getMessage());
+            return "";
+        }
     }
 
     private function extractDocx($path)
     {
-        $phpWord = IOFactory::load($path);
+        try {
+            $phpWord = IOFactory::load($path);
+            $text = '';
+            foreach ($phpWord->getSections() as $section) {
+                $text .= $this->processElements($section->getElements());
+            }
+            return trim($text);
+        } catch (\Exception $e) {
+            Log::error("Docx Extraction Error: " . $e->getMessage());
+            return "";
+        }
+    }
+
+    private function processElements($elements): string
+    {
         $text = '';
-        foreach ($phpWord->getSections() as $section) {
-            foreach ($section->getElements() as $element) {
-                if (method_exists($element, 'getText')) {
-                    $text .= $element->getText() . " ";
+        foreach ($elements as $element) {
+            if (is_callable([$element, 'getText'])) {
+                $text .= $element->getText() . " ";
+            } elseif (method_exists($element, 'getElements')) {
+                $text .= $this->processElements($element->getElements());
+            } elseif (method_exists($element, 'getRows')) {
+                // Handle tables
+                foreach ($element->getRows() as $row) {
+                    foreach ($row->getCells() as $cell) {
+                        $text .= $this->processElements($cell->getElements());
+                    }
                 }
             }
         }
-        return trim($text);
+        return $text;
     }
 }
