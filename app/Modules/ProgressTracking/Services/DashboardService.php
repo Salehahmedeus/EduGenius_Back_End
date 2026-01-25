@@ -14,7 +14,7 @@ class DashboardService
         $this->repo = $repo;
     }
 
-    public function getBasicInfo($user, array $stats)
+    public function getBasicInfo($user, array $stats, $language = 'en')
     {
         // 1. Format User
         $userData = [
@@ -35,7 +35,7 @@ class DashboardService
         });
 
         // 3. Generate Smart Recommendation
-        $recommendation = $this->generateRecommendation($stats);
+        $recommendation = $this->generateRecommendation($stats, $language);
 
         return [
             'user' => $userData,
@@ -44,14 +44,26 @@ class DashboardService
         ];
     }
 
-    private function generateRecommendation($stats)
+    private function generateRecommendation($stats, $language)
     {
+        $isArabic = str_starts_with($language, 'ar');
+
         if ($stats['uploaded_count'] == 0) {
-            return ['text' => "Start by uploading your first PDF.", 'action' => 'upload'];
+            return [
+                'text' => $isArabic ? "ابدأ بتحميل أول ملف PDF لك." : "Start by uploading your first PDF.",
+                'action' => 'upload'
+            ];
         }
         if ($stats['quiz_count'] > 0 && $stats['avg_score'] < 60) {
-            return ['text' => "Your scores are low. Ask the AI for help.", 'action' => 'chat'];
+            return [
+                'text' => $isArabic ? "درجاتك منخفضة. اطلب المساعدة من المعلم الذكي." : "Your scores are low. Ask the AI for help.",
+                'action' => 'chat'
+            ];
         }
-        return ['text' => "Keep up the great work!", 'action' => 'none'];
+
+        return [
+            'text' => $isArabic ? "استمر في العمل الرائع!" : "Keep up the great work!",
+            'action' => 'none'
+        ];
     }
 }

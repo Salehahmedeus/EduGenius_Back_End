@@ -47,7 +47,7 @@ class AnalyticsController extends Controller
         $stats = $this->repo->getUnifiedStats($userId);
 
         // 2. Get Basic Info (User Profile, Recents List, Recommendation)
-        $basicInfo = $this->dashboardService->getBasicInfo($user, $stats);
+        $basicInfo = $this->dashboardService->getBasicInfo($user, $stats, $lang);
 
         // 3. Get Visuals (Charts, Insights - PASS Language)
         $visuals = $this->vizService->getVisuals($userId, $stats, $lang);
