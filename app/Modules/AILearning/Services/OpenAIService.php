@@ -5,15 +5,23 @@ namespace App\Modules\AILearning\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Modules\AILearning\Models\AITutor;
+use Illuminate\Http\Client\Response;
 
 class OpenAIService
 {
-    public function sendQueryWithHistory(string $fileContext, string $chatHistory, string $question)
+    public function sendQueryWithHistory(string $fileContext, string $chatHistory, string $question, string $language = 'en')
     {
         // ... (Get Tutor Config from DB logic) ...
         $tutor = AITutor::where('is_active', true)->first();
         $model = $tutor ? $tutor->model_version : 'gemini-1.5-flash-latest';
         $systemPrompt = $tutor ? $tutor->system_prompt : 'You are a helpful AI.';
+
+        // Add language-specific instruction
+        if (str_starts_with($language, 'ar')) {
+            $systemPrompt .= "\n\nIMPORTANT INSTRUCTION: You MUST answer the user's question in Arabic Language (اللغة العربية).";
+        } else {
+            $systemPrompt .= "\n\nAnswer in English.";
+        }
 
         // ... (Prepare URL) ...
         $apiKey = env('GEMINI_API_KEY');
@@ -26,6 +34,7 @@ class OpenAIService
             "CURRENT QUESTION: " . $question;
 
         try {
+            /** @var Response $response */
             $response = Http::withHeaders(['Content-Type' => 'application/json'])
                 ->post($url, [
                     'contents' => [['parts' => [['text' => $fullText]]]]
@@ -42,7 +51,7 @@ class OpenAIService
         }
     }
 
-    public function generateRawContent(string $prompt)
+    public function generateRawContent(string $prompt, string $language = 'en')
     {
         $tutor = AITutor::where('is_active', true)->first();
         $model = $tutor ? $tutor->model_version : 'gemini-1.5-flash-latest';
@@ -50,7 +59,15 @@ class OpenAIService
         // We use the same model, but we might want to ensure it's the latest
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
+        // Add language-specific instruction to the prompt
+        if (str_starts_with($language, 'ar')) {
+            $prompt .= "\n\nIMPORTANT: Generate all content in Arabic Language (اللغة العربية).";
+        } else {
+            $prompt .= "\n\nGenerate all content in English.";
+        }
+
         try {
+            /** @var Response $response */
             $response = Http::withHeaders(['Content-Type' => 'application/json'])
                 ->post($url, [
                     'contents' => [['parts' => [['text' => $prompt]]]]

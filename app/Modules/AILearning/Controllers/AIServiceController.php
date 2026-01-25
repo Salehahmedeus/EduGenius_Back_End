@@ -39,6 +39,10 @@ class AIServiceController extends Controller
         $query = $request->input('query');
         $convId = $request->input('conversation_id');
 
+        // Get Language from Header (Default to 'en' if missing)
+        // Flutter sends 'ar' or 'ar-SA'
+        $lang = $request->header('Accept-Language', 'en');
+
         try {
             // 2. Check: Did the user upload a file?
             if ($request->hasFile('file')) {
@@ -51,8 +55,8 @@ class AIServiceController extends Controller
                 // Extract text
                 $text = $this->fileProcessor->extractText($fullPath, $file->getMimeType());
 
-                // Generate response
-                $result = $this->aiService->generateFromSpecificText($userId, $query, $text, $convId);
+                // Generate response (Pass language)
+                $result = $this->aiService->generateFromSpecificText($userId, $query, $text, $convId, $lang);
 
                 // Cleanup temp file
                 $this->storageService->delete($path);
@@ -61,7 +65,8 @@ class AIServiceController extends Controller
             } else {
                 // === PATH B: Normal Chat (Database Search) ===
 
-                $result = $this->aiService->generate($userId, $query, $convId);
+                // Pass language to generate method
+                $result = $this->aiService->generate($userId, $query, $convId, $lang);
 
                 return response()->json($result);
             }

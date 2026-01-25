@@ -24,7 +24,7 @@ class ResponseSynthesizer
         $this->aiService = $aiService;
     }
 
-    public function generate($userId, $query, $conversationId = null)
+    public function generate($userId, $query, $conversationId = null, $language = 'en')
     {
         // 1. NLP & Keyword Extraction (Existing logic)
         $keywords = $this->nlpProcessor->extractKeywords($query);
@@ -42,8 +42,8 @@ class ResponseSynthesizer
         // 3. Get History for THIS specific conversation
         $chatHistory = $this->historyRepo->getConversationContext($userId, $conversationId);
 
-        // 4. Send to AI (Same)
-        $aiText = $this->aiService->sendQueryWithHistory($fileContext, $chatHistory, $query);
+        // 4. Send to AI (Pass language)
+        $aiText = $this->aiService->sendQueryWithHistory($fileContext, $chatHistory, $query, $language);
 
         // 5. Log Interaction (Pass the ID)
         $context = $this->knowledgeRepo->logInteraction($userId, $query, $aiText, $sourceIds, $conversationId);
@@ -61,7 +61,7 @@ class ResponseSynthesizer
         return $this->historyRepo->getMessagesByConversation($userId, $conversationId);
     }
 
-    public function generateFromSpecificText($userId, $query, $textFromPdf, $conversationId = null)
+    public function generateFromSpecificText($userId, $query, $textFromPdf, $conversationId = null, $language = 'en')
     {
         // 1. Get History (Context)
         $chatHistory = $this->historyRepo->getConversationContext($userId, $conversationId);
@@ -71,7 +71,8 @@ class ResponseSynthesizer
         $aiText = $this->aiService->sendQueryWithHistory(
             $textFromPdf,  //  Using the file text directly
             $chatHistory,
-            $query
+            $query,
+            $language  // Pass language parameter
         );
 
         // 3. Log Interaction (Passing the conversationId to keep the thread alive)

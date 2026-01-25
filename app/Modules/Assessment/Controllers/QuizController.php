@@ -38,11 +38,15 @@ class QuizController extends Controller
             'difficulty'     => 'integer|min:1|max:3'
         ]);
 
+        // Get Language from Header (Default to 'en' if missing)
+        $lang = $request->header('Accept-Language', 'en');
+
         try {
             $quiz = $this->generator->generateQuiz(
                 auth('api')->id(),
                 $request->input('material_ids'), // Pass array
-                $request->input('difficulty', 1)
+                $request->input('difficulty', 1),
+                $lang  // Pass language
             );
 
             return response()->json([

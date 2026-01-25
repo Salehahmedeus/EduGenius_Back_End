@@ -23,7 +23,7 @@ class QuizGenerator
         $this->aiService = $aiService;
     }
 
-    public function generateQuiz($userId, array $materialIds, $difficulty = 1)
+    public function generateQuiz($userId, array $materialIds, $difficulty = 1, $language = 'en')
     {
         // 1. Get All Selected Materials
         $materials = \App\Modules\ContentManagement\Models\UploadedMaterial::with('knowledgeBase')
@@ -64,8 +64,8 @@ class QuizGenerator
         // 3. Create Quiz Session
         $quiz = $this->quizRepo->createQuiz($userId, $topicString, $difficulty);
 
-        // 4. Ask AI (Send the combined context)
-        $questions = $this->fetchQuestionsFromAI($fullContext, $difficulty);
+        // 4. Ask AI (Send the combined context with language)
+        $questions = $this->fetchQuestionsFromAI($fullContext, $difficulty, $language);
 
         // 5. Save Questions
         $this->quizRepo->addQuestions($quiz->id, $questions);
@@ -73,7 +73,7 @@ class QuizGenerator
         return $this->quizRepo->getQuiz($quiz->id);
     }
 
-    private function fetchQuestionsFromAI($context, $difficulty)
+    private function fetchQuestionsFromAI($context, $difficulty, $language = 'en')
     {
         $diffLabel = match ((int)$difficulty) {
             1 => "Easy",
@@ -88,7 +88,7 @@ class QuizGenerator
             "\n\nCONTEXT:\n" . $context;
 
 
-        $rawText = $this->aiService->generateRawContent($prompt);
+        $rawText = $this->aiService->generateRawContent($prompt, $language);
 
         if (!$rawText) {
             throw new \Exception("AI failed to generate quiz.");
