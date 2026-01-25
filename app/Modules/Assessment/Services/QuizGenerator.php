@@ -75,17 +75,33 @@ class QuizGenerator
 
     private function fetchQuestionsFromAI($context, $difficulty, $language = 'en')
     {
-        $diffLabel = match ((int)$difficulty) {
-            1 => "Easy",
-            2 => "Medium",
-            default => "Hard"
-        };
+        if (str_starts_with($language, 'ar')) {
+            // Arabic Labels & Prompt
+            $diffLabel = match ((int)$difficulty) {
+                1 => "سهل",
+                2 => "متوسط",
+                default => "صعب"
+            };
 
-        $prompt = "Generate 5 multiple-choice questions based on the text below. " .
-            "Difficulty: $diffLabel. " .
-            "Return ONLY raw JSON (No markdown). " .
-            "Format: [{ \"question\": \"...\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"correct_answer\": \"The String Answer\", \"explanation\": \"...\" }] " .
-            "\n\nCONTEXT:\n" . $context;
+            $prompt = "قم بإنشاء 5 أسئلة اختيار من متعدد بناءً على النص أدناه. " .
+                "الصعوبة: $diffLabel. " .
+                "أرجع فقط مصفوفة JSON خام (بدون تنسيق ماركداون). " .
+                "التنسيق: [{ \"question\": \"...\", \"options\": [\"أ\", \"ب\", \"ج\", \"د\"], \"correct_answer\": \"نص الإجابة الصحيحة\", \"explanation\": \"...\" }] " .
+                "\n\nالسياق:\n" . $context;
+        } else {
+            // English Labels & Prompt
+            $diffLabel = match ((int)$difficulty) {
+                1 => "Easy",
+                2 => "Medium",
+                default => "Hard"
+            };
+
+            $prompt = "Generate 5 multiple-choice questions based on the text below. " .
+                "Difficulty: $diffLabel. " .
+                "Return ONLY raw JSON (No markdown). " .
+                "Format: [{ \"question\": \"...\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"correct_answer\": \"The String Answer\", \"explanation\": \"...\" }] " .
+                "\n\nCONTEXT:\n" . $context;
+        }
 
 
         $rawText = $this->aiService->generateRawContent($prompt, $language);

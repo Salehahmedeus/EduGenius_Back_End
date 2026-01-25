@@ -39,6 +39,9 @@ class AnalyticsController extends Controller
         $user = auth('api')->user();
         $userId = $user->id;
 
+        // 0. Get Language (Default 'en')
+        $lang = $request->header('Accept-Language', 'en');
+
         // 1. Fetch Stats ONCE (Source of Truth)
         // We get the numbers here and pass them down to avoid recalculating
         $stats = $this->repo->getUnifiedStats($userId);
@@ -46,8 +49,8 @@ class AnalyticsController extends Controller
         // 2. Get Basic Info (User Profile, Recents List, Recommendation)
         $basicInfo = $this->dashboardService->getBasicInfo($user, $stats);
 
-        // 3. Get Visuals (Charts, Insights)
-        $visuals = $this->vizService->getVisuals($userId, $stats);
+        // 3. Get Visuals (Charts, Insights - PASS Language)
+        $visuals = $this->vizService->getVisuals($userId, $stats, $lang);
 
         // 4. Construct Final JSON manually to match your exact requirement
         return response()->json([
