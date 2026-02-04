@@ -42,4 +42,10 @@ class UserRepository
         }
         return false;
     }
+
+    public function updateUserName($user, $name)
+    {
+        $user->name = $name;
+        $user->save();
+    }
 }

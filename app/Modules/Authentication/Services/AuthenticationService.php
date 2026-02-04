@@ -181,4 +181,12 @@ class AuthenticationService
 
         return ['status' => true, 'message' => 'Password has been reset successfully'];
     }
+
+
+    public function change_user_name($name)
+    {
+        $user = auth('api')->user();
+        $this->userRepo->updateUserName($user, $name);
+        return ['status' => true, 'message' => 'Name changed successfully'];
+    }
 }

@@ -136,4 +136,23 @@ class AuthController extends Controller
             return response()->json(['error' => $result['message']], 400);
         }
     }
+
+    public function change_user_name(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
+
+        $result = $this->authService->change_user_name($request->name);
+
+        if ($result['status']) {
+            return response()->json(['message' => $result['message']]);
+        } else {
+            return response()->json(['error' => $result['message']], 400);
+        }
+    }
 }

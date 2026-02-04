@@ -8,22 +8,31 @@ use Illuminate\Http\Request;
 use App\Modules\ContentManagement\Services\FileProcessor;
 use App\Modules\ContentManagement\Services\FileStorageService;
 use App\Modules\AILearning\Models\ConversationContext;
+use App\Modules\AILearning\Services\OpenAIService;
+
+
 
 class AIServiceController extends Controller
 {
-    protected $aiService;
-    protected $fileProcessor;
-    protected $storageService;
+
+   
 
     public function __construct(
         ResponseSynthesizer $aiService,
         FileProcessor $fileProcessor,
-        FileStorageService $storageService
+        FileStorageService $storageService,
+        OpenAIService $aiService2
     ) {
         $this->aiService = $aiService;
         $this->fileProcessor = $fileProcessor;
         $this->storageService = $storageService;
+        $this->aiService2 = $aiService2;
     }
+
+     protected $aiService;
+    protected $fileProcessor;
+    protected $storageService;
+    protected $aiService2;
 
     public function ask(Request $request)
     {
@@ -95,5 +104,29 @@ class AIServiceController extends Controller
         }
 
         return response()->json(['message' => 'Chat deleted successfully']);
+    }
+
+    public function askNormalAi(Request $request)
+    {
+        $request->validate([
+            'query' => 'required|string|min:2',
+            'conversation_id' => 'nullable|integer|exists:conversation_contexts,id',
+            'file'  => 'nullable|file|mimes:pdf,docx,txt|max:10240'
+        ]);
+
+        $userId = auth('api')->id();
+        $query = $request->input('query');
+        $convId = $request->input('conversation_id');
+
+        $lang = $request->header('Accept-Language', 'en');
+
+        
+            
+
+        // Pass language to generate method
+        $result = $this->aiService2->generateNormalAi($userId, $query, $convId, $lang);
+
+        return response()->json($result);
+            
     }
 }

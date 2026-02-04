@@ -4,6 +4,7 @@ namespace App\Modules\AILearning\Services;
 
 use App\Modules\AILearning\Repositories\KnowledgeRepository;
 use App\Modules\AILearning\Repositories\HistoryRepository;
+use App\Modules\AILearning\Services\OpenAIService;
 
 class ResponseSynthesizer
 {
@@ -90,4 +91,32 @@ class ResponseSynthesizer
     {
         return $this->knowledgeRepo->deleteConversation($userId, $conversationId);
     }
+
+    public function generateNormalAi($userId, $query, $conversationId = null, $language = 'en')
+    {
+        // 1. NLP & Keyword Extraction (Existing logic)
+        $keywords = $this->nlpProcessor->extractKeywords($query);
+
+        // 2. Search Local Files (Existing logic)
+        $localResults = $this->knowledgeRepo->searchByKeywords($userId, $keywords);
+
+        
+
+        // 3. Get History for THIS specific conversation
+        $chatHistory = $this->historyRepo->getConversationContext($userId, $conversationId);
+
+        // 4. Send to AI (Pass language)
+        $aiText = $this->aiService->Noraml_way($chatHistory, $query, $language);
+
+        // 5. Log Interaction (Pass the ID)
+        $context = $this->knowledgeRepo->logInteraction($userId, $query, $aiText, $sourceIds, $conversationId);
+
+        return [
+            'conversation_id' => $context->id, // Return ID so frontend can continue this chat
+            'context_name' => $context->context_name,
+            'response' => $aiText,
+            'sources' => $sourceIds
+        ];
+    }
+
 }

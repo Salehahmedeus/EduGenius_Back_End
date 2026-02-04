@@ -3,6 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Modules\AILearning\Controllers\AIServiceController;
 
+Route::post('ai/ask-normal', [AIServiceController::class, 'askNormalAi']);
+
+
 Route::middleware('auth:api')->group(function () {
     Route::post('ai/ask', [AIServiceController::class, 'ask']);
     Route::get('ai/chats', [AIServiceController::class, 'listChats']);
